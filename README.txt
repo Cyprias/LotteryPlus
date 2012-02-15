@@ -1,0 +1,1 @@
+LotteryPlus is a powerful lottery interface that gives admins the ultimate tools and unlimited resources. The lotteries.yml allows admins to tweak and create the perfect lotteries for their server.
