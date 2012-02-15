@@ -1,0 +1,11 @@
+properties:
+    reminder-message: '&eDont forget to check your servers lotteries. Type /lottery list to list lotteries.'
+    permissions: false
+    reminder-message-time: 1
+lottery properties:
+    max-tickets: 10
+    max-players: 10
+    min-players: 1
+    default-time: 24
+    default-ticketcost: 1.00
+    default-pot: 100.0

@@ -1,0 +1,67 @@
+name: LotteryPlus
+main: com.randude14.customlottery.Plugin
+authors: [Randude14]
+version: 0.5.0
+commands: 
+    lottery: 
+      description: basic command
+      usage: 
+
+permissions:
+    lottery.*:
+        description: Gives access to all lottery basic user commands
+        children:
+            lottery.help: false
+            lottery.list: false
+            lottery.info: false
+            lottery.buy: false
+            lottery.addtopot: false 
+            lottery.winners: false         
+    lottery.help:
+        description: receive list of commands
+        default: false
+    lottery.list:
+        description: list lotteries
+        default: false
+    lottery.info:
+        description: get lottery info
+        default: false
+    lottery.buy:
+        description: buy a ticket a lottery
+        default: false
+    lottery.addtopot:
+        description: add to a pot's lottery
+        default: false
+    lottery.winners:
+        description: list winners
+        default: false
+
+
+    lottery.sign.*:
+        description: Gives access to admin lottery commands
+        children:
+            lottery.sign.create: false  
+            lottery.sign.remove: false
+    lottery.sign.create:
+        description: create lottery sign
+        default: false
+    lottery.sign.remove:
+        description: remove lottery sign
+        default: false
+
+
+    lottery.admin.*:
+        description: Gives access to admin lottery commands
+        children:
+            lottery.admin.reward: false  
+    lottery.admin.reward:
+        description: admin remove lottery
+        default: false
+
+    lottery.perms.*:
+        description: Gives access all commands
+        children:
+            lottery.perms.all: false 
+    lottery.perm.all:
+        description: access to all commands
+        default: false
