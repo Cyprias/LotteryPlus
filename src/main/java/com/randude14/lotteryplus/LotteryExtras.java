@@ -89,7 +89,7 @@ public class LotteryExtras {
 	public void writeMaterialConfig() {
 
 		for (Material material : Material.values()) {
-			materialConfig.set(material.name(), material.getId());
+			materialConfig.createSection(material.name());
 		}
 
 		saveMaterialConfig();
