@@ -1,7 +1,7 @@
 name: LotteryPlus
 main: com.randude14.customlottery.Plugin
 authors: [Randude14]
-version: 0.5.0
+version: 0.5.1a
 commands: 
     lottery: 
       description: basic command
