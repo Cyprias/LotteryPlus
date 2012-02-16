@@ -78,12 +78,10 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		listEnchantments = new File(getDataFolder(), "enchantments.yml");
 
 		signListener = new SignListener(this);
-		registerListeners(this, signListener);
 
 		if (!configFile.exists()) {
 			info("config file not found. attempting to write default config...");
 			config.writeConfig();
-			info("type 'lottery reload' to reload config.");
 		}
 
 		LotteryExtras extras = new LotteryExtras(this);
@@ -104,12 +102,14 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 			warning("economy system not found! Lottery+ uses 'Vault' to plug into other economies.");
 			warning("download is at 'http://dev.bukkit.org/server-mods/vault/'");
 			abort();
+			return;
 		}
 
 		if (!setupPermission()) {
 			warning("permission system not found! Lottery+ uses 'Vault' to plug into other permissions.");
 			warning("download is at 'http://dev.bukkit.org/server-mods/vault/'");
 			abort();
+			return;
 		}
 
 		config.loadConfig();
@@ -151,6 +151,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 			info("enabled.");
 			scheduler.scheduleSyncDelayedTask(this, this, MINUTE
 					* SERVER_SECOND * config.getReminderMessageTime());
+			registerListeners(this, signListener);
 		}
 
 	}
