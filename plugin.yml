@@ -1,7 +1,7 @@
 name: LotteryPlus
-main: com.randude14.customlottery.Plugin
+main: com.randude14.lotteryplus.Plugin
 authors: [Randude14]
-version: 0.5.1a
+version: 0.5.4
 commands: 
     lottery: 
       description: basic command
@@ -54,14 +54,14 @@ permissions:
         description: Gives access to admin lottery commands
         children:
             lottery.admin.reward: false  
+            lottery.admin.reload: false  
+            lottery.admin.draw: false  
     lottery.admin.reward:
         description: admin remove lottery
         default: false
-
-    lottery.perms.*:
-        description: Gives access all commands
-        children:
-            lottery.perms.all: false 
-    lottery.perm.all:
-        description: access to all commands
+    lottery.admin.reload:
+        description: reload lotteries
+        default: false
+    lottery.admin.draw:
+        description: admin force draw a lottery
         default: false
