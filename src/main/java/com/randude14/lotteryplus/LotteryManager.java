@@ -1,47 +1,40 @@
 package com.randude14.lotteryplus;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.enchantments.Enchantment;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.randude14.lotteryplus.lottery.Lottery;
+import com.randude14.lotteryplus.util.TimeConstants;
 
-public class LotteryManager {
+public class LotteryManager extends Thread implements TimeConstants {
 
 	private final Plugin plugin;
 	private List<Lottery> lotteries;
 	private FileConfiguration lotteryConfig;
 	private File lotteryFile;
-	private File lotteryStore;
+	private boolean reloading;
 
 	protected LotteryManager(final Plugin plugin) {
+		super("Lottery Manager");
 		this.plugin = plugin;
 		lotteries = new ArrayList<Lottery>();
-		lotteryStore = new File(plugin.getDataFolder(), "lotteries");
 		reloadConfig();
 		if (!lotteryFile.exists()) {
-			plugin.warning("'lotteries.yml' was not found. writing defaults.");
+			plugin.warning(lotteryFile.getName()
+					+ " was not found. writing defaults.");
 			writeConfig();
 		}
-
+		reloading = false;
 	}
 
 	public Lottery searchLottery(String name) {
@@ -57,7 +50,33 @@ public class LotteryManager {
 		return null;
 	}
 
-	private void reloadConfig() {
+	public void run() {
+
+		while (plugin.isEnabled()) {
+
+			while (reloading) {
+
+				try {
+					Thread.sleep(10);
+				} catch (Exception ex) {
+				}
+
+			}
+
+			for (Lottery lottery : lotteries) {
+				lottery.countdown();
+			}
+
+			try {
+				Thread.sleep(1000);
+			} catch (Exception ex) {
+			}
+
+		}
+
+	}
+
+	protected void reloadConfig() {
 
 		if (lotteryFile == null) {
 			lotteryFile = new File(plugin.getDataFolder(), "lotteries.yml");
@@ -68,9 +87,9 @@ public class LotteryManager {
 		InputStream lotteryStream = plugin.getResource("lotteries.yml");
 
 		if (lotteryStream != null) {
-			YamlConfiguration config = YamlConfiguration
+			YamlConfiguration defConfig = YamlConfiguration
 					.loadConfiguration(lotteryStream);
-			config.setDefaults(lotteryConfig);
+			lotteryConfig.setDefaults(defConfig);
 		}
 
 	}
@@ -96,75 +115,39 @@ public class LotteryManager {
 
 	}
 
-	@SuppressWarnings("unchecked")
+	public ConfigurationSection getInfoSection(String lottery) {
+		reloadConfig();
+		return getConfig().getConfigurationSection("lotteries")
+				.getConfigurationSection(lottery);
+	}
+
 	protected void loadLotteries() {
-		Map<String, Map<String, Object>> loadMap = null;
 
 		try {
-			ObjectInputStream stream = new ObjectInputStream(
-					new FileInputStream(lotteryStore));
-			loadMap = (Map<String, Map<String, Object>>) stream.readObject();
-			stream.close();
-		} catch (Exception ex) {
-		}
-
-		try {
-			LotteryConfig lotteryConfig = plugin.getLotteryConfig();
 			ConfigurationSection lotterySection = getConfig()
 					.getConfigurationSection("lotteries");
+			ConfigurationSection saveSection = getConfig()
+					.getConfigurationSection("saves");
 
 			for (String lotteryName : lotterySection.getKeys(false)) {
-				Lottery lottery = null;
+				Lottery lottery = new Lottery(plugin, lotteryName);
 
 				if (nameExists(lotteryName)) {
 					continue;
 				}
 
-				if (loadMap != null && loadMap.containsKey(lotteryName)) {
-					Map<String, Object> serialMap = (Map<String, Object>) loadMap
-							.get(lotteryName);
-					lottery = Lottery.deserialize(serialMap, plugin);
-				}
-
-				else {
+				if (saveSection != null && saveSection.contains(lotteryName)) {
+					ConfigurationSection section = saveSection
+							.getConfigurationSection(lotteryName);
+					lottery.readSavedData(section);
+				} else {
 					ConfigurationSection section = lotterySection
 							.getConfigurationSection(lotteryName);
-					double pot = section.getDouble("pot",
-							lotteryConfig.getDefaultPot());
-					double ticketCost = section.getDouble("ticketcost",
-							lotteryConfig.getDefaultTicketCost());
-					long time = section.getLong("time",
-							lotteryConfig.getDefaultTime());
-					boolean repeat = section.getBoolean("repeat", Boolean.TRUE);
-					boolean itemOnly = section.getBoolean("item-only",
-							Boolean.FALSE);
-					int maxTickets = section.getInt("max-tickets",
-							lotteryConfig.getDefaultMaxTickets());
-					int maxPlayers = section.getInt("max-players",
-							lotteryConfig.getDefaultMaxPlayers());
-					int minPlayers = section.getInt("min-players",
-							lotteryConfig.getDefaultMinPlayers());
-					lottery = new Lottery(plugin, lotteryName, time, pot,
-							ticketCost, repeat, itemOnly, maxTickets,
-							maxPlayers, minPlayers);
-
-					if (section.contains("item-reward")) {
-						ConfigurationSection itemRewardOptions = section
-								.getConfigurationSection("item-reward");
-
-						for (String matName : itemRewardOptions.getKeys(false)) {
-							ConfigurationSection itemOptions = itemRewardOptions
-									.getConfigurationSection(matName);
-							ItemStack itemReward = loadItem(itemOptions,
-									matName);
-							lottery.addItemReward(itemReward);
-						}
-
-					}
-
+					lottery.loadData(section);
 				}
 
 				lotteries.add(lottery);
+				lottery.start();
 			}
 
 			plugin.info("lotteries loaded.");
@@ -176,96 +159,62 @@ public class LotteryManager {
 
 	}
 
-	public void resetLottery(Lottery lottery) {
-		LotteryConfig config = plugin.getLotteryConfig();
-		ConfigurationSection data = getConfig().getConfigurationSection(
-				"lotteries." + lottery.getName());
-		double pot = data.getDouble("pot", config.getDefaultPot());
-		double ticketCost = data.getDouble("ticketcost",
-				config.getDefaultTicketCost());
-		long time = data.getLong("time", config.getDefaultTime());
-		boolean repeat = data.getBoolean("repeat", Boolean.TRUE);
-		boolean itemOnly = data.getBoolean("item-only", Boolean.FALSE);
-		int maxTickets = data.getInt("max-tickets",
-				config.getDefaultMaxTickets());
-		int maxPlayers = data.getInt("max-players",
-				config.getDefaultMaxPlayers());
-		int minPlayers = data.getInt("min-players",
-				config.getDefaultMinPlayers());
+	protected void reloadLotteries() {
+		reloadConfig();
+		reloading = true;
+		lotteries.clear();
 
-		lottery.setRepeat(repeat).setItemOnly(itemOnly).setPot(pot)
-				.setTicketCost(ticketCost).setTimer(time)
-				.setMaxPlayers(maxPlayers).setMinPlayers(minPlayers)
-				.setMaxTickets(maxTickets);
+		try {
+			ConfigurationSection lotterySection = getConfig()
+					.getConfigurationSection("lotteries");
 
-		if (data.contains("item-reward")) {
-			ConfigurationSection itemRewardOptions = data
-					.getConfigurationSection("item-reward");
+			for (String lotteryName : lotterySection.getKeys(false)) {
 
-			for (String matName : itemRewardOptions.getKeys(false)) {
-				ConfigurationSection itemOptions = itemRewardOptions
-						.getConfigurationSection(matName);
-				ItemStack itemReward = loadItem(itemOptions, matName);
-				lottery.addItemReward(itemReward);
-			}
-
-		}
-
-	}
-
-	private ItemStack loadItem(ConfigurationSection itemOptions, String matName) {
-
-		Material material = Material.getMaterial(matName);
-
-		if (material == null) {
-			return null;
-		}
-
-		int stackSize = itemOptions.getInt("stack-size", 1);
-		ItemStack stack = new ItemStack(material, stackSize);
-
-		for (String key : itemOptions.getKeys(false)) {
-
-			if (key.equals("item-id") || key.equals("stack-size")) {
-				continue;
-			}
-
-			Enchantment enchantment = Enchantment.getByName(key);
-			int level = itemOptions.getInt(key);
-
-			if (enchantment != null && enchantment.canEnchantItem(stack)) {
-
-				try {
-					stack.addEnchantment(enchantment, level);
-				} catch (Exception ex) {
+				if (nameExists(lotteryName)) {
+					continue;
 				}
 
+				Lottery lottery = new Lottery(plugin, lotteryName);
+				
+				lotteries.add(lottery);
+				reloadLottery(lotteryName);
+				lottery.start();
 			}
 
+			plugin.info("lotteries loaded.");
+		} catch (Exception ex) {
+			ex.printStackTrace();
+			plugin.severe("error has occured while reloading lotteries in config.");
+			plugin.abort();
+		}
+		reloading = false;
+	}
+
+	public void reloadLottery(String lotteryName) {
+		Lottery lottery = searchLottery(lotteryName);
+
+		if (lottery == null) {
+			return;
 		}
 
-		return stack;
+		reloading = true;
+		reloadConfig();
+		FileConfiguration config = getConfig();
+		ConfigurationSection lotteriesSection = config
+				.getConfigurationSection("lotteries");
+		ConfigurationSection lotterySection = lotteriesSection
+				.getConfigurationSection(lottery.getName());
+		lottery.loadData(lotterySection);
+		reloading = false;
 	}
 
 	public void saveLotteries() {
-
-		try {
-			ObjectOutputStream oos = new ObjectOutputStream(
-					new FileOutputStream(lotteryStore));
-			Map<String, Map<String, Object>> saveMap = new HashMap<String, Map<String, Object>>();
-
-			for (Lottery lottery : lotteries) {
-				saveMap.put(lottery.getName(), lottery.serialize());
-			}
-
-			oos.writeObject(saveMap);
-			oos.flush();
-			oos.close();
-			plugin.info("lotteries saved.");
-		} catch (Exception ex) {
-			plugin.severe("failed to save lotteries.");
+		ConfigurationSection lotterySection = getConfig()
+				.createSection("saves");
+		for (Lottery lottery : lotteries) {
+			lottery.save(lotterySection.createSection(lottery.getName()));
 		}
-
+		saveConfig();
 	}
 
 	public boolean nameExists(String name) {

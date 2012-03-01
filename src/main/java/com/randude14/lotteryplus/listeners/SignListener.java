@@ -17,9 +17,9 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import com.randude14.lotteryplus.LotteryManager;
 import com.randude14.lotteryplus.Plugin;
 import com.randude14.lotteryplus.lottery.Lottery;
-import com.randude14.lotteryplus.lottery.LotterySign;
+import com.randude14.lotteryplus.util.FormatOptions;
 
-public class SignListener implements Listener {
+public class SignListener implements Listener, FormatOptions {
 
 	private final Plugin plugin;
 	private final LotteryManager manager;
@@ -86,13 +86,12 @@ public class SignListener implements Listener {
 		for (Lottery lottery : lotteries) {
 
 			if (lottery.signAtLocation(loc)) {
-				LotterySign sign = lottery.getSignAt(loc);
 
 				if (!plugin.hasPermission(player, "lottery.sign.remove")) {
 					event.setCancelled(true);
 					plugin.error(player,
 							"[Lottery+] - You do not have permission.");
-					sign.update();
+					lottery.updateSigns();
 				}
 
 				else {
@@ -122,6 +121,7 @@ public class SignListener implements Listener {
 		for (Lottery lottery : lotteries) {
 
 			if (lottery.signAtLocation(loc)) {
+				event.setCancelled(true);
 
 				if (!plugin.hasPermission(player, "lottery.buy")) {
 					plugin.error(player, "You do not have permission");
@@ -135,7 +135,7 @@ public class SignListener implements Listener {
 							"---------------------------------------------------");
 					return;
 				}
-				
+
 				int maxPlayers = lottery.getMaxPlayers();
 
 				if (lottery.playersEntered() >= maxPlayers && maxPlayers != -1
@@ -149,9 +149,10 @@ public class SignListener implements Listener {
 
 				plugin.help(player,
 						"---------------------------------------------------");
-				plugin.send(player, "Lottery Name: " + lottery.getName());
-				plugin.send(player,
-						"Ticket Cost: " + lottery.formatTicketCost());
+				String[] messages = getBuyMessage(lottery);
+				for (String message : messages) {
+					player.sendMessage(message);
+				}
 				plugin.send(player, "");
 				plugin.send(player, "How many tickets would you like to buy?");
 				plugin.addBuyer(player.getName(), lottery.getName());
@@ -160,6 +161,19 @@ public class SignListener implements Listener {
 
 		}
 
+	}
+
+	private String[] getBuyMessage(Lottery lottery) {
+		String message = plugin.getLotteryConfig().getBuyMessage();
+		message = plugin.replaceColors(message)
+				.replace(FORMAT_REWARD, lottery.formatReward())
+				.replace(FORMAT_TIME, lottery.formatTimer())
+				.replace(FORMAT_NAME, lottery.getName())
+				.replace(FORMAT_WINNER, lottery.formatWinner())
+				.replace(FORMAT_TICKET_COST, lottery.formatTicketCost())
+				.replace(FORMAT_TICKET_TAX, lottery.formatTicketTax())
+				.replace(FORMAT_POT_TAX, lottery.formatPotTax());
+		return message.split("\n");
 	}
 
 	private boolean isLotterySign(SignChangeEvent event) {

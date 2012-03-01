@@ -1,6 +1,8 @@
 package com.randude14.lotteryplus.util;
 
 public interface TimeConstants {
+	
+	public static final long WEEK = 60 * 60 * 24 * 7;
 
 	public static final long DAY = 60 * 60 * 24;
 

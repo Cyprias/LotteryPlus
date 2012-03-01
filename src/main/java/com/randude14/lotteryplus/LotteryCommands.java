@@ -34,10 +34,6 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 			String[] args) {
 		command = command.toLowerCase();
 
-		if (!"lottery".equals(command)) {
-			return false;
-		}
-
 		if (isPlayer(sender)) {
 			handleCommand((Player) sender, args);
 			return false;
@@ -113,7 +109,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 				plugin.help(player,
 						"---------------------------------------------------");
 				plugin.send(player, plugin.getName() + " - lottery info for "
-						+ lottery.getName());
+						+ ChatColor.GOLD + lottery.getName());
 				plugin.send(player, "");
 				lottery.sendInfo(player);
 				plugin.help(player,
@@ -197,9 +193,13 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 				}
 
 				econ.withdrawPlayer(name, price);
-				lottery.playerBought(name, tickets);
-				plugin.send(player, "Player has bought " + tickets
-						+ " ticket(s) for the lottery " + lottery);
+				double added = lottery.playerBought(name, tickets);
+				plugin.send(player, "Player has bought " + ChatColor.GOLD
+						+ tickets + ChatColor.YELLOW
+						+ " ticket(s) for the lottery " + ChatColor.GOLD
+						+ lottery + ChatColor.YELLOW + " for " + ChatColor.GOLD
+						+ plugin.format(price) + ". " + plugin.format(added)
+						+ ChatColor.YELLOW + " has been added to the pot.");
 			}
 
 		}
@@ -246,19 +246,19 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 				}
 
 				int tickets = Integer.parseInt(args[3]);
-				lottery.playerBought(name, tickets);
-				plugin.send(player,
-						"Player " + name + " has been awarded " + tickets
-								+ " ticket(s) for lottery " + lottery.getName());
+				lottery.playerBought(offline.getName(), tickets);
+				plugin.send(player, "Player " + offline.getName()
+						+ " has been awarded " + tickets
+						+ " ticket(s) for lottery " + ChatColor.GOLD.toString()
+						+ lottery.getName());
 				Player rewardedPlayer = offline.getPlayer();
 
 				if (rewardedPlayer != null) {
-					plugin.send(
-							rewardedPlayer,
-							"You have been rewarded " + tickets
-									+ " ticket(s) for the lottery "
-									+ lottery.getName() + " from admin "
-									+ player.getName());
+					plugin.send(rewardedPlayer, "You have been rewarded "
+							+ tickets + " ticket(s) for the lottery "
+							+ ChatColor.GOLD + lottery.getName()
+							+ ChatColor.YELLOW + " from admin "
+							+ ChatColor.GOLD + player.getName());
 				}
 
 			}
@@ -291,6 +291,15 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 
 				if (lottery == null) {
 					plugin.error(player, "Lottery not found.");
+					return;
+				}
+
+				if (lottery.isItemOnly()) {
+					plugin.error(player,
+							"Lottery " + ChatColor.GOLD + lottery.getName()
+									+ ChatColor.YELLOW
+									+ " is currently an 'item-only' lottery");
+					return;
 				}
 
 				double add = 0;
@@ -304,6 +313,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 
 				if (econ.getBalance(name) < add) {
 					plugin.error(player, "Player does not have enought money.");
+					return;
 				}
 
 				econ.withdrawPlayer(name, add);
@@ -332,7 +342,12 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 
 			List<LotteryClaim> claims = plugin.getClaims(name);
 
-			if (claims == null || claims.isEmpty()) {
+			if (claims == null) {
+				plugin.error(player, "There are no lottery claims for " + name);
+				return;
+			}
+
+			if (claims.isEmpty()) {
 				plugin.error(player, "There are no lottery claims for " + name);
 				return;
 			}
@@ -351,37 +366,42 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 					claim.setPot(-1);
 				}
 
-				for (int i = 0; i < itemRewards.size(); i++) {
-					ItemStack itemReward = itemRewards.get(i);
+				if (itemRewards != null && !itemRewards.isEmpty()) {
 
-					if (!player.getInventory().addItem(itemReward).isEmpty()) {
-						plugin.error(player,
-								"There was not enough room for your item "
+					for (int i = 0; i < itemRewards.size(); i++) {
+						ItemStack itemReward = itemRewards.get(i);
+
+						if (!player.getInventory().addItem(itemReward)
+								.isEmpty()) {
+							plugin.error(player,
+									"There was not enough room for your item "
+											+ ChatColor.GOLD
+											+ itemReward.getType().name()
+											+ ChatColor.RED + " for lottery "
+											+ ChatColor.GOLD + lottery + ".");
+							flag = true;
+							i = itemRewards.size();
+						}
+
+						else {
+
+							if (!flag) {
+								plugin.send(player, "Awarded player with item "
 										+ ChatColor.GOLD
 										+ itemReward.getType().name()
-										+ ChatColor.RED + " for lottery "
-										+ ChatColor.GOLD + lottery + ".");
-						flag = true;
-						i = itemRewards.size();
-					}
+										+ ChatColor.YELLOW + " form lottery "
+										+ ChatColor.GOLD + lottery);
+								itemRewards.remove(i);
+								i--;
+							}
 
-					else {
-
-						if (!flag) {
-							plugin.send(player, "Awarded player with item "
-									+ ChatColor.GOLD
-									+ itemReward.getType().name()
-									+ ChatColor.YELLOW + " form lottery "
-									+ ChatColor.GOLD + lottery);
-							itemRewards.remove(i);
-							i--;
 						}
 
 					}
 
 				}
 
-				if (itemRewards.isEmpty()) {
+				if (itemRewards == null || itemRewards.isEmpty()) {
 					claims.remove(cntr);
 				}
 
@@ -397,6 +417,50 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 			}
 
 			plugin.listWinners(player);
+		}
+
+		else if ("draw".equals(args[0])) {
+
+			if (!plugin.hasPermission(player, "lottery.admin.draw")) {
+				plugin.error(player, "You do not have permission.");
+				return;
+			}
+
+			if (args.length > 2) {
+				plugin.error(player, "Too many arguments!");
+				return;
+			}
+
+			else if (args.length == 2) {
+				Lottery lottery = manager.searchLottery(args[1]);
+
+				if (lottery == null) {
+					plugin.error(player, "Lottery not found.");
+					return;
+				}
+
+				plugin.broadcast(ChatColor.GOLD + name + ChatColor.YELLOW
+						+ " is force drawing the lottery " + ChatColor.GOLD
+						+ lottery.getName() + ChatColor.YELLOW
+						+ ", and the winner is...", "lottery.buy");
+				lottery.stop();
+				lottery.setDrawing(true);
+				lottery.updateSigns();
+				plugin.getScheduler().scheduleSyncDelayedTask(plugin, lottery,
+						SERVER_SECOND * 3);
+			}
+
+		}
+
+		else if ("reload".equals(args[0])) {
+
+			if (!plugin.hasPermission(player, "lottery.admin.relaod")) {
+				plugin.error(player, "You do not have permission.");
+				return;
+			}
+
+			plugin.reload();
+			plugin.send(player, plugin.getName() + " - reloaded.");
 		}
 
 		else {
@@ -490,6 +554,9 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 				"6. /lottery addtopot <lottery name> <money> - add money to the pot of a lottery");
 		plugin.send(player, "7. /lottery claim - claim an award");
 		plugin.send(player, "8. /lottery winners - list past lottery winners");
+		plugin.send(player,
+				"9. /lottery draw <lottery name> - force draw a lottery");
+		plugin.send(player, "10. /lottery reload - reloads the lotteries.yml");
 		plugin.help(player,
 				"---------------------------------------------------");
 	}

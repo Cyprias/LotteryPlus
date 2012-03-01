@@ -114,7 +114,11 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 
 		config.loadConfig();
 		manager.loadLotteries();
-		getCommand(CMD_LOTTERY).setExecutor(new LotteryCommands(this));
+		if (manager.getLotteries().isEmpty()) {
+			severe("no lotteries have been loaded.");
+			abort();
+			return;
+		}
 
 		try {
 			ObjectLoadStream stream = new ObjectLoadStream(claimsFile);
@@ -149,16 +153,26 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 
 		if (this.isEnabled()) {
 			info("enabled.");
-			scheduler.scheduleSyncDelayedTask(this, this, MINUTE
-					* SERVER_SECOND * config.getReminderMessageTime());
 			registerListeners(this, signListener);
+			callTasks();
+			getCommand(CMD_LOTTERY).setExecutor(new LotteryCommands(this));
+			manager.start();
 		}
 
+	}
+
+	public void callTasks() {
+		long delay = MINUTE * SERVER_SECOND * config.getReminderMessageTime();
+		scheduler.scheduleSyncRepeatingTask(this, this, delay, delay);
 	}
 
 	public void abort() {
 		severe("An error has ocurred. shutting down...");
 		setEnabled(false);
+	}
+
+	public void reload() {
+		manager.reloadLotteries();
 	}
 
 	public void onDisable() {
@@ -256,6 +270,10 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		logger.log(Level.SEVERE, info);
 	}
 
+	public String format(double value) {
+		return econ.format(value);
+	}
+
 	public String getName() {
 
 		if (pluginName == null) {
@@ -290,8 +308,26 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 
 	public void run() {
 		broadcast(config.getReminderMessage(), "lottery.list");
-		scheduler.scheduleSyncDelayedTask(this, this, MINUTE * SERVER_SECOND
-				* config.getReminderMessageTime());
+	}
+
+	public String replaceColors(String message) {
+		return message.replaceAll("&0", ChatColor.BLACK.toString())
+				.replaceAll("&1", ChatColor.DARK_BLUE.toString())
+				.replaceAll("&2", ChatColor.DARK_GREEN.toString())
+				.replaceAll("&3", ChatColor.DARK_AQUA.toString())
+				.replaceAll("&4", ChatColor.DARK_RED.toString())
+				.replaceAll("&5", ChatColor.DARK_PURPLE.toString())
+				.replaceAll("&6", ChatColor.GOLD.toString())
+				.replaceAll("&7", ChatColor.GRAY.toString())
+				.replaceAll("&8", ChatColor.DARK_GRAY.toString())
+				.replaceAll("&9", ChatColor.BLUE.toString())
+				.replaceAll("&a", ChatColor.GREEN.toString())
+				.replaceAll("&b", ChatColor.AQUA.toString())
+				.replaceAll("&c", ChatColor.RED.toString())
+				.replaceAll("&d", ChatColor.LIGHT_PURPLE.toString())
+				.replaceAll("&e", ChatColor.YELLOW.toString())
+				.replaceAll("&f", ChatColor.WHITE.toString())
+				.replaceAll("&k", ChatColor.MAGIC.toString());
 	}
 
 	public boolean locsInBounds(Location loc1, Location loc2) {
@@ -445,15 +481,13 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		}
 
 		econ.withdrawPlayer(name, cost);
-		lottery.playerBought(name, tickets);
+		double added = lottery.playerBought(name, tickets);
 		send(player, "Player has bought " + tickets + " ticket(s) for "
 				+ ChatColor.GOLD.toString() + format(cost));
+		send(player, ChatColor.GOLD + format(added) + ChatColor.YELLOW
+				+ " has been added to the pot.");
 		send(player, "Transaction completed");
 		help(player, "---------------------------------------------------");
-	}
-
-	private String format(double d) {
-		return String.format("$%.2f", d);
 	}
 
 	@EventHandler(priority = EventPriority.MONITOR)
