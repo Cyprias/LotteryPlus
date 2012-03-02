@@ -48,7 +48,6 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 	private SignListener signListener;
 	private Logger logger;
 	private BukkitScheduler scheduler;
-	private String pluginName;
 	private String logName;
 	private File configFile;
 	private File listMaterials;
@@ -272,15 +271,6 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 
 	public String format(double value) {
 		return econ.format(value);
-	}
-
-	public String getName() {
-
-		if (pluginName == null) {
-			pluginName = "[" + getDescription().getName() + "]";
-		}
-
-		return pluginName;
 	}
 
 	public void broadcast(String message, String permission) {

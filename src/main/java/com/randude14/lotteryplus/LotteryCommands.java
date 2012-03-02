@@ -40,7 +40,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 		}
 
 		else {
-			sender.sendMessage(plugin.getName() + " - In game use only.");
+			sender.sendMessage("[" + plugin.getName() + "] - In game use only.");
 		}
 
 		return false;
@@ -108,7 +108,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 
 				plugin.help(player,
 						"---------------------------------------------------");
-				plugin.send(player, plugin.getName() + " - lottery info for "
+				plugin.send(player, "[" + plugin.getName() + "] - lottery info for "
 						+ ChatColor.GOLD + lottery.getName());
 				plugin.send(player, "");
 				lottery.sendInfo(player);
@@ -460,7 +460,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 			}
 
 			plugin.reload();
-			plugin.send(player, plugin.getName() + " - reloaded.");
+			plugin.send(player, "[" + plugin.getName() + "] - reloaded.");
 		}
 
 		else {
@@ -504,7 +504,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 
 		plugin.help(player,
 				"---------------------------------------------------");
-		plugin.send(player, plugin.getName() + " - Page " + page + "/" + pages);
+		plugin.send(player, "[" + plugin.getName() + "] - Page " + page + "/" + pages);
 		int stop = (page * 10);
 
 		if (lotteries.isEmpty()) {
@@ -538,7 +538,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 	private void helpMessage(Player player) {
 		plugin.help(player,
 				"---------------------------------------------------");
-		plugin.send(player, plugin.getName() + " - command list");
+		plugin.send(player, "[" + plugin.getName() + "] - command list");
 		plugin.send(player, "");
 		plugin.send(player, "1. /lottery - displays this");
 		plugin.send(player, "2. /lottery list <page> - list lotteries");

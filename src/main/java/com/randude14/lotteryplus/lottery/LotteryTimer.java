@@ -64,7 +64,7 @@ public class LotteryTimer implements TimeConstants {
 			if (isOver()) {
 				Plugin plugin = lottery.getPlugin();
 				plugin.getServer().broadcastMessage(
-						ChatColor.YELLOW.toString() + plugin.getName() + " - Lottery "
+						ChatColor.YELLOW.toString() + "[" + plugin.getName() + "] - Lottery "
 								+ ChatColor.GOLD.toString() + lottery.getName()
 								+ ChatColor.YELLOW.toString()
 								+ " is ending. and the winner is...");

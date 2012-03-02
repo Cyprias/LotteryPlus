@@ -469,9 +469,9 @@ public class Lottery implements TimeConstants, Runnable {
 		if (count < minPlayers || count < 1) {
 			plugin.getServer()
 					.broadcastMessage(
-							ChatColor.YELLOW
+							ChatColor.YELLOW + "["
 									+ plugin.getName()
-									+ " - no one! there were not enough players entered. restarting lottery.");
+									+ "] - no one! there were not enough players entered. restarting lottery.");
 			timer.reset();
 			timer.start();
 			return;
@@ -484,7 +484,7 @@ public class Lottery implements TimeConstants, Runnable {
 		double winnings = pot - (pot * (potTax / 100));
 
 		StringBuilder message = new StringBuilder();
-		message.append(ChatColor.YELLOW + plugin.getName() + " - "
+		message.append(ChatColor.YELLOW + "[" + plugin.getName() + "] - "
 				+ ChatColor.GOLD + winner + "! " + ChatColor.YELLOW
 				+ "Player has won ");
 
