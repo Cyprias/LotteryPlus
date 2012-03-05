@@ -146,10 +146,10 @@ public class Lottery implements TimeConstants, Runnable {
 							try {
 								item.addEnchantment(enchantment, level);
 							} catch (Exception ex) {
-								plugin.warning(name + " - invalid enchantment "
-										+ enchantment.getName()
-										+ " when applying " + level
-										+ " to item " + material.name());
+								plugin.warning(String
+										.format("%s: invalid enchantment %s when applying %d to item %s",
+												name, enchantment.getName(),
+												level, material.name()));
 							}
 
 						}
@@ -270,8 +270,10 @@ public class Lottery implements TimeConstants, Runnable {
 
 		for (int cntr = 0; cntr < tickets; cntr++) {
 			players.add(player);
-			value += (isItemOnly()) ? 0 : ticketCost - (ticketCost * (ticketTax / 100));
-			pot += (isItemOnly()) ? 0 : ticketCost - (ticketCost * (ticketTax / 100));
+			value += (isItemOnly()) ? 0 : ticketCost
+					- (ticketCost * (ticketTax / 100));
+			pot += (isItemOnly()) ? 0 : ticketCost
+					- (ticketCost * (ticketTax / 100));
 		}
 		return value;
 	}
@@ -283,8 +285,8 @@ public class Lottery implements TimeConstants, Runnable {
 			Player player = Bukkit.getPlayer(name);
 
 			if (player != null) {
-				plugin.send(player, "Lottery's pot has been raised to "
-						+ formatPot());
+				plugin.send(player, String.format(
+						"%s's pot has been raised to %s", name, formatPot()));
 			}
 
 		}
@@ -344,7 +346,7 @@ public class Lottery implements TimeConstants, Runnable {
 
 		return tickets;
 	}
-	
+
 	public void countdown() {
 		timer.countdown();
 	}
@@ -360,11 +362,11 @@ public class Lottery implements TimeConstants, Runnable {
 	public String formatTicketCost() {
 		return plugin.format(ticketCost);
 	}
-	
+
 	public String formatTicketTax() {
 		return (ticketTax == 0.0) ? "none" : "%" + ticketTax;
 	}
-	
+
 	public String formatPotTax() {
 		return (potTax == 0.0) ? "none" : "%" + potTax;
 	}
@@ -408,12 +410,20 @@ public class Lottery implements TimeConstants, Runnable {
 				config.getDefaultMaxPlayers());
 		this.minPlayers = section.getInt("min-players",
 				config.getDefaultMinPlayers());
-		long time = section.getLong("time", config.getDefaultTime()) * HOUR;
+		long time = 0L;
+		if (section.isLong("time")) {
+			time = section.getLong("time") * HOUR;
+		} else if (section.isDouble("time")) {
+			double d = section.getDouble("time");
+			time = (long) Math.floor(d * HOUR);
+		} else {
+			time = config.getDefaultTime() * HOUR;
+		}
 		this.timer.setTime(time);
 		this.timer.setResetTime(time);
 		this.ticketTax = section.getDouble("ticket-tax", 0.0);
 		this.potTax = section.getDouble("pot-tax", 0.0);
-		
+
 		if (section.contains("item-rewards")) {
 			ConfigurationSection itemRewardsSection = section
 					.getConfigurationSection("item-rewards");
@@ -469,7 +479,8 @@ public class Lottery implements TimeConstants, Runnable {
 		if (count < minPlayers || count < 1) {
 			plugin.getServer()
 					.broadcastMessage(
-							ChatColor.YELLOW + "["
+							ChatColor.YELLOW
+									+ "["
 									+ plugin.getName()
 									+ "] - no one! there were not enough players entered. restarting lottery.");
 			timer.reset();
@@ -558,8 +569,8 @@ public class Lottery implements TimeConstants, Runnable {
 				}
 
 				else {
-					logWinner.append(", Item Reward(s) - [" + itemRewards.size()
-							+ " items]");
+					logWinner.append(", Item Reward(s) - ["
+							+ itemRewards.size() + " items]");
 				}
 
 			}
