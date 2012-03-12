@@ -2,7 +2,7 @@ properties:
   reminder-message: '&eDont forget to check your servers lotteries. Type /lottery list to list lotteries.'
   permissions: false
   reminder-message-time: 30
-  sign-message: '&eName: <name>\n&eTicket Cost: <ticketcost>'
+  sign-message: '&eName: <name><newline>&eTicket Cost: <ticketcost>'
 lottery properties:
   min-players: 2
   default-ticketcost: 1.0

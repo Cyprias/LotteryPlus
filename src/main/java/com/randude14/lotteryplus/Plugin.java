@@ -321,13 +321,9 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 	}
 
 	public boolean locsInBounds(Location loc1, Location loc2) {
-		double x1 = Math.floor(loc1.getX());
-		double y1 = Math.floor(loc1.getY());
-		double z1 = Math.floor(loc1.getZ());
-		double x2 = Math.floor(loc2.getX());
-		double y2 = Math.floor(loc2.getY());
-		double z2 = Math.floor(loc2.getZ());
-		return x1 == x2 && y1 == y2 && z1 == z2;
+		return loc1.getBlockX() == loc2.getBlockX()
+				&& loc1.getBlockY() == loc2.getBlockY()
+				&& loc1.getBlockZ() == loc2.getBlockZ();
 	}
 
 	public void send(Player player, String mess, ChatColor color) {
@@ -348,9 +344,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 
 	public boolean hasPermission(Player player, String permission) {
 		return perm.has(player.getWorld().getName(), player.getName(),
-				permission)
-				|| player.hasPermission("lottery.perms.all")
-				|| !config.isPermsEnabled();
+				permission) || !config.isPermsEnabled();
 	}
 
 	public void addBuyer(String player, String lottery) {

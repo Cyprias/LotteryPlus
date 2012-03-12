@@ -38,7 +38,7 @@ public class LotteryTimer implements TimeConstants {
 	public void start() {
 		setRunning(true);
 	}
-	
+
 	public void stop() {
 		setRunning(false);
 	}
@@ -56,17 +56,20 @@ public class LotteryTimer implements TimeConstants {
 	}
 
 	public void countdown() {
+		
+		if(!running && !isOver()) {
+			running = true;
+		}
 
 		if (running) {
 			time--;
 			lottery.updateSigns();
-
 			if (isOver()) {
 				Plugin plugin = lottery.getPlugin();
 				plugin.getServer().broadcastMessage(
-						ChatColor.YELLOW.toString() + "[" + plugin.getName() + "] - Lottery "
-								+ ChatColor.GOLD.toString() + lottery.getName()
-								+ ChatColor.YELLOW.toString()
+						ChatColor.YELLOW.toString() + "[" + plugin.getName()
+								+ "] - Lottery " + ChatColor.GOLD.toString()
+								+ lottery.getName() + ChatColor.YELLOW.toString()
 								+ " is ending. and the winner is...");
 				plugin.getScheduler().scheduleSyncDelayedTask(plugin, lottery,
 						SERVER_SECOND * 3);
@@ -74,7 +77,7 @@ public class LotteryTimer implements TimeConstants {
 				lottery.updateSigns();
 				running = false;
 			}
-
+			
 		}
 
 	}
@@ -85,10 +88,10 @@ public class LotteryTimer implements TimeConstants {
 
 	public String format() {
 		long sec = (time) % 60;
-		long min = (time / 60) % 60;
-		long hours = (time / (60 * 60)) % 24;
-		long days = (time / (60 * 60 * 24)) % 7;
-		long weeks = (time / (60 * 60 * 24 * 7)) % 52;
+		long min = (time / MINUTE) % 60;
+		long hours = (time / HOUR) % 24;
+		long days = (time / DAY) % 7;
+		long weeks = (time / WEEK) % 52;
 		String display = String.format("%02d:%02d:%02d:%02d:%02d", weeks, days,
 				hours, min, sec);
 		return display;

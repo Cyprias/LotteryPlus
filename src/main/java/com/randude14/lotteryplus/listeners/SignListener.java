@@ -164,16 +164,16 @@ public class SignListener implements Listener, FormatOptions {
 	}
 
 	private String[] getBuyMessage(Lottery lottery) {
-		String message = plugin.getLotteryConfig().getBuyMessage();
-		message = plugin.replaceColors(message)
-				.replace(FORMAT_REWARD, lottery.formatReward())
-				.replace(FORMAT_TIME, lottery.formatTimer())
-				.replace(FORMAT_NAME, lottery.getName())
-				.replace(FORMAT_WINNER, lottery.formatWinner())
-				.replace(FORMAT_TICKET_COST, lottery.formatTicketCost())
-				.replace(FORMAT_TICKET_TAX, lottery.formatTicketTax())
-				.replace(FORMAT_POT_TAX, lottery.formatPotTax());
-		return message.split("\n");
+		String buyMessage = plugin.getLotteryConfig().getBuyMessage();
+			buyMessage = plugin.replaceColors(buyMessage)
+					.replace(FORMAT_REWARD, lottery.formatReward())
+					.replace(FORMAT_TIME, lottery.formatTimer())
+					.replace(FORMAT_NAME, lottery.getName())
+					.replace(FORMAT_WINNER, lottery.formatWinner())
+					.replace(FORMAT_TICKET_COST, lottery.formatTicketCost())
+					.replace(FORMAT_TICKET_TAX, lottery.formatTicketTax())
+					.replace(FORMAT_POT_TAX, lottery.formatPotTax());
+		return buyMessage.split(FORMAT_NEWLINE);
 	}
 
 	private boolean isLotterySign(SignChangeEvent event) {

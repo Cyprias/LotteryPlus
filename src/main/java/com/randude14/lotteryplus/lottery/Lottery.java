@@ -34,6 +34,7 @@ public class Lottery implements TimeConstants, Runnable {
 	private final List<String> players;
 	private final String name;
 	private String winner;
+	private long cooldown;
 	private double ticketCost;
 	private double pot;
 	private double ticketTax;
@@ -74,10 +75,15 @@ public class Lottery implements TimeConstants, Runnable {
 		this.winner = section.getString("past-winner");
 		this.ticketTax = section.getDouble("ticket-tax", 0.0);
 		this.potTax = section.getDouble("pot-tax", 0.0);
+		this.cooldown = section.getLong("cooldown", 0L);
 
 		timer.setTime(section.getLong("save-time"));
 		timer.setResetTime(section.getLong("reset-time"));
 		timer.setRunning(section.getBoolean("timer-running"));
+		
+		if(timer.isOver() && !timer.isRunning()) {
+			timer.setRunning(true);
+		}
 
 		if (section.contains("players")) {
 			ConfigurationSection players = section
@@ -161,7 +167,70 @@ public class Lottery implements TimeConstants, Runnable {
 			}
 
 		}
-		updateSigns();
+		
+	}
+	
+	public void loadData(ConfigurationSection section) {
+		LotteryConfig config = plugin.getLotteryConfig();
+		this.repeat = section.getBoolean("repeat", Boolean.TRUE);
+		this.ticketCost = section.getDouble("ticketcost",
+				config.getDefaultTicketCost());
+		this.pot = section.getDouble("pot", config.getDefaultPot());
+		this.itemOnly = section.getBoolean("item-only", Boolean.FALSE);
+		this.maxTickets = section.getInt("max-tickets",
+				config.getDefaultMaxTickets());
+		this.maxPlayers = section.getInt("max-players",
+				config.getDefaultMaxPlayers());
+		this.minPlayers = section.getInt("min-players",
+				config.getDefaultMinPlayers());
+		double d = section.getDouble("time", config.getDefaultTime());
+		long time = (long) Math.floor(d * HOUR);
+		this.timer.setTime(time);
+		this.timer.setResetTime(time);
+		this.ticketTax = section.getDouble("ticket-tax", 0.0);
+		this.potTax = section.getDouble("pot-tax", 0.0);
+		this.cooldown = section.getLong("cooldown", 0L);
+
+		if (section.contains("item-rewards")) {
+			ConfigurationSection itemRewardsSection = section
+					.getConfigurationSection("item-rewards");
+
+			for (String matName : itemRewardsSection.getKeys(false)) {
+				ConfigurationSection itemSection = itemRewardsSection
+						.getConfigurationSection(matName);
+				Material material = Material.getMaterial(matName);
+
+				if (material != null) {
+					int amount = itemSection.getInt("stack-size", 1);
+					ItemStack item = new ItemStack(material, amount);
+
+					for (String enchantName : itemSection.getKeys(false)) {
+						Enchantment enchantment = Enchantment
+								.getByName(enchantName);
+
+						if (enchantment != null
+								&& enchantment.canEnchantItem(item)) {
+							int level = itemSection.getInt(enchantName, 1);
+
+							try {
+								item.addEnchantment(enchantment, level);
+							} catch (Exception ex) {
+								plugin.warning(name + " - invalid enchantment "
+										+ enchantment.getName()
+										+ " when applying " + level
+										+ " to item " + material.name());
+							}
+
+						}
+
+					}
+					itemRewards.add(item);
+				}
+
+			}
+
+		}
+
 	}
 
 	public boolean isItemOnly() {
@@ -267,13 +336,15 @@ public class Lottery implements TimeConstants, Runnable {
 
 	public double playerBought(String player, int tickets) {
 		double value = 0.0;
-
 		for (int cntr = 0; cntr < tickets; cntr++) {
 			players.add(player);
 			value += (isItemOnly()) ? 0 : ticketCost
 					- (ticketCost * (ticketTax / 100));
 			pot += (isItemOnly()) ? 0 : ticketCost
 					- (ticketCost * (ticketTax / 100));
+		}
+		if(cooldown > 0) {
+			timer.setTime(timer.getTime() + cooldown);
 		}
 		return value;
 	}
@@ -364,11 +435,11 @@ public class Lottery implements TimeConstants, Runnable {
 	}
 
 	public String formatTicketTax() {
-		return (ticketTax == 0.0) ? "none" : "%" + ticketTax;
+		return (ticketTax == 0.0) ? "none" : ticketTax + "%";
 	}
 
 	public String formatPotTax() {
-		return (potTax == 0.0) ? "none" : "%" + potTax;
+		return (potTax == 0.0) ? "none" : potTax + "%";
 	}
 
 	public String formatTimer() {
@@ -395,75 +466,6 @@ public class Lottery implements TimeConstants, Runnable {
 
 	public void stop() {
 		timer.stop();
-	}
-
-	public void loadData(ConfigurationSection section) {
-		LotteryConfig config = plugin.getLotteryConfig();
-		this.repeat = section.getBoolean("repeat", Boolean.TRUE);
-		this.ticketCost = section.getDouble("ticketcost",
-				config.getDefaultTicketCost());
-		this.pot = section.getDouble("pot", config.getDefaultPot());
-		this.itemOnly = section.getBoolean("item-only", Boolean.FALSE);
-		this.maxTickets = section.getInt("max-tickets",
-				config.getDefaultMaxTickets());
-		this.maxPlayers = section.getInt("max-players",
-				config.getDefaultMaxPlayers());
-		this.minPlayers = section.getInt("min-players",
-				config.getDefaultMinPlayers());
-		long time = 0L;
-		if (section.isLong("time")) {
-			time = section.getLong("time") * HOUR;
-		} else if (section.isDouble("time")) {
-			double d = section.getDouble("time");
-			time = (long) Math.floor(d * HOUR);
-		} else {
-			time = config.getDefaultTime() * HOUR;
-		}
-		this.timer.setTime(time);
-		this.timer.setResetTime(time);
-		this.ticketTax = section.getDouble("ticket-tax", 0.0);
-		this.potTax = section.getDouble("pot-tax", 0.0);
-
-		if (section.contains("item-rewards")) {
-			ConfigurationSection itemRewardsSection = section
-					.getConfigurationSection("item-rewards");
-
-			for (String matName : itemRewardsSection.getKeys(false)) {
-				ConfigurationSection itemSection = itemRewardsSection
-						.getConfigurationSection(matName);
-				Material material = Material.getMaterial(matName);
-
-				if (material != null) {
-					int amount = itemSection.getInt("stack-size", 1);
-					ItemStack item = new ItemStack(material, amount);
-
-					for (String enchantName : itemSection.getKeys(false)) {
-						Enchantment enchantment = Enchantment
-								.getByName(enchantName);
-
-						if (enchantment != null
-								&& enchantment.canEnchantItem(item)) {
-							int level = itemSection.getInt(enchantName, 1);
-
-							try {
-								item.addEnchantment(enchantment, level);
-							} catch (Exception ex) {
-								plugin.warning(name + " - invalid enchantment "
-										+ enchantment.getName()
-										+ " when applying " + level
-										+ " to item " + material.name());
-							}
-
-						}
-
-					}
-					itemRewards.add(item);
-				}
-
-			}
-
-		}
-		updateSigns();
 	}
 
 	private void reset() {
@@ -661,6 +663,7 @@ public class Lottery implements TimeConstants, Runnable {
 		section.set("past-winner", winner);
 		section.set("ticket-tax", ticketTax);
 		section.set("pot-tax", potTax);
+		section.set("cooldown", cooldown);
 
 		if (!players.isEmpty()) {
 

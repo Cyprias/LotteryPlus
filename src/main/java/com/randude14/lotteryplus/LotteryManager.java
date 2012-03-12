@@ -62,16 +62,21 @@ public class LotteryManager extends Thread implements TimeConstants {
 				}
 
 			}
-
-			for (Lottery lottery : lotteries) {
-				lottery.countdown();
-			}
-
+			
 			try {
 				Thread.sleep(1000);
 			} catch (Exception ex) {
 			}
 
+			for (Lottery lottery : lotteries) {
+				
+				try {
+				lottery.countdown();
+				} catch (Exception ex) {				
+				}
+				
+			}
+			
 		}
 
 	}
@@ -162,23 +167,20 @@ public class LotteryManager extends Thread implements TimeConstants {
 	protected void reloadLotteries() {
 		reloadConfig();
 		reloading = true;
-		lotteries.clear();
 
 		try {
 			ConfigurationSection lotterySection = getConfig()
 					.getConfigurationSection("lotteries");
 
 			for (String lotteryName : lotterySection.getKeys(false)) {
-
 				if (nameExists(lotteryName)) {
-					continue;
+					reloadLottery(lotteryName, true);
+				} else {
+					Lottery lottery = new Lottery(plugin, lotteryName);
+					lotteries.add(lottery);
+					reloadLottery(lotteryName, true);
+					lottery.start();
 				}
-
-				Lottery lottery = new Lottery(plugin, lotteryName);
-				
-				lotteries.add(lottery);
-				reloadLottery(lotteryName);
-				lottery.start();
 			}
 
 			plugin.info("lotteries loaded.");
@@ -189,15 +191,16 @@ public class LotteryManager extends Thread implements TimeConstants {
 		}
 		reloading = false;
 	}
-
-	public void reloadLottery(String lotteryName) {
+	
+	private void reloadLottery(String lotteryName, boolean flag) {
 		Lottery lottery = searchLottery(lotteryName);
 
 		if (lottery == null) {
 			return;
 		}
-
-		reloading = true;
+		if(!flag) {
+			reloading = true;
+		}
 		reloadConfig();
 		FileConfiguration config = getConfig();
 		ConfigurationSection lotteriesSection = config
@@ -205,7 +208,13 @@ public class LotteryManager extends Thread implements TimeConstants {
 		ConfigurationSection lotterySection = lotteriesSection
 				.getConfigurationSection(lottery.getName());
 		lottery.loadData(lotterySection);
-		reloading = false;
+		if(!flag) {
+			reloading = false;
+		}
+	}
+
+	public void reloadLottery(String lotteryName) {
+		reloadLottery(lotteryName, false);
 	}
 
 	public void saveLotteries() {

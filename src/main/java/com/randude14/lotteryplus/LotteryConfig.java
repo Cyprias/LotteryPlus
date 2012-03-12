@@ -10,7 +10,7 @@ import com.randude14.lotteryplus.util.FormatOptions;
 
 public class LotteryConfig implements FormatOptions {
 	private static final String DEFAULT_REMINDER_MESSAGE = "&eDont forget to check your servers lotteries. Type /lottery list to list lotteries.";
-	private static final String DEFAULT_BUY_SIGN_MESSAGE = "&eName: <name>\n&eTicket Cost: <ticketcost>";
+	private static final String DEFAULT_BUY_SIGN_MESSAGE = "&eName: <name><newline>&eTicket Cost: <ticketcost>";
 	private static final String DEFAULT_SIGN_NORMAL_ONE = "<name>";
 	private static final String DEFAULT_SIGN_NORMAL_TWO = "<time>";
 	private static final String DEFAULT_SIGN_NORMAL_THREE = "<reward>";

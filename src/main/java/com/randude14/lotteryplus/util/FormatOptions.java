@@ -8,4 +8,5 @@ public interface FormatOptions {
 	public static final String FORMAT_TICKET_COST = "<ticketcost>";
 	public static final String FORMAT_TICKET_TAX = "<ticket_tax>";
 	public static final String FORMAT_POT_TAX = "<pot_tax>";
+	public static final String FORMAT_NEWLINE = "<newline>";
 }
