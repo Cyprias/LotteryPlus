@@ -20,7 +20,8 @@ public class LotteryConfig implements FormatOptions {
 	private static final String DEFAULT_SIGN_END_ONE = "<name>";
 	private static final String DEFAULT_SIGN_END_TWO = "Over";
 	private static final String DEFAULT_SIGN_END_THREE = "<winner>";
-	private static final long DEFAULT_REMINDER_MESSAGE_TIME = 30;
+	private static final long DEFAULT_REMINDER_MESSAGE_TIME = 30L;
+	private static final long DEFAULT_UPDATE_TIME = 60L;
 	private static final boolean DEFAULT_PERMISSIONS = false;
 	private static final int DEFAULT_MAX_PLAYERS = 10;
 	private static final int DEFAULT_MIN_PLAYERS = 2;
@@ -36,6 +37,7 @@ public class LotteryConfig implements FormatOptions {
 	private double TICKETCOST;
 	private int MAXTICKETS;
 	private long TIME;
+	private long UPDATE_TIME;
 	private String REMINDER_MESSAGE;
 	private String SIGN_BUY_MESSAGE;
 	private String[] normalArgs;
@@ -61,6 +63,7 @@ public class LotteryConfig implements FormatOptions {
 					DEFAULT_REMINDER_MESSAGE_TIME);
 			REMINDER_MESSAGE = properties.getString("reminder-message",
 					REMINDER_MESSAGE);
+			UPDATE_TIME = properties.getLong("update-delay", DEFAULT_UPDATE_TIME);
 			SIGN_BUY_MESSAGE = properties.getString("sign-message", DEFAULT_BUY_SIGN_MESSAGE);
 			REMINDER_MESSAGE = plugin.replaceColors(REMINDER_MESSAGE);
 			ConfigurationSection lotteryProperties = plugin.getConfig()
@@ -107,6 +110,7 @@ public class LotteryConfig implements FormatOptions {
 		propertyMap.put("permissions", Boolean.FALSE);
 		propertyMap.put("reminder-message-time", DEFAULT_REMINDER_MESSAGE_TIME);
 		propertyMap.put("reminder-message", DEFAULT_REMINDER_MESSAGE);
+		propertyMap.put("update-delay", DEFAULT_UPDATE_TIME);
 		propertyMap.put("sign-message", DEFAULT_BUY_SIGN_MESSAGE);
 		Map<String, Object> lotteryMap = new HashMap<String, Object>();
 		lotteryMap.put("default-pot", DEFAULT_POT);
@@ -180,6 +184,10 @@ public class LotteryConfig implements FormatOptions {
 
 	public String getReminderMessage() {
 		return REMINDER_MESSAGE;
+	}
+	
+	public long getUpdateDelay() {
+		return UPDATE_TIME;
 	}
 	
 	public String getBuyMessage() {

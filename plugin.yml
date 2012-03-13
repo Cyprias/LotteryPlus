@@ -1,7 +1,8 @@
 name: LotteryPlus
 main: com.randude14.lotteryplus.Plugin
+depend: [Vault]
 authors: [Randude14]
-version: 0.5.4a
+version: 0.5.8
 commands: 
     lottery: 
       description: basic command
@@ -19,22 +20,22 @@ permissions:
             lottery.winners: false         
     lottery.help:
         description: receive list of commands
-        default: false
+        default: isop
     lottery.list:
         description: list lotteries
-        default: false
+        default: isop
     lottery.info:
         description: get lottery info
-        default: false
+        default: isop
     lottery.buy:
         description: buy a ticket a lottery
-        default: false
+        default: isop
     lottery.addtopot:
         description: add to a pot's lottery
-        default: false
+        default: isop
     lottery.winners:
         description: list winners
-        default: false
+        default: isop
 
 
     lottery.sign.*:
@@ -44,10 +45,10 @@ permissions:
             lottery.sign.remove: false
     lottery.sign.create:
         description: create lottery sign
-        default: false
+        default: isop
     lottery.sign.remove:
         description: remove lottery sign
-        default: false
+        default: isop
 
 
     lottery.admin.*:
@@ -58,10 +59,10 @@ permissions:
             lottery.admin.draw: false  
     lottery.admin.reward:
         description: admin remove lottery
-        default: false
+        default: isop
     lottery.admin.reload:
         description: reload lotteries
-        default: false
+        default: isop
     lottery.admin.draw:
         description: admin force draw a lottery
-        default: false
+        default: isop

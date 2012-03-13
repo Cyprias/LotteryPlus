@@ -108,8 +108,9 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 
 				plugin.help(player,
 						"---------------------------------------------------");
-				plugin.send(player, "[" + plugin.getName() + "] - lottery info for "
-						+ ChatColor.GOLD + lottery.getName());
+				plugin.send(player,
+						"[" + plugin.getName() + "] - lottery info for "
+								+ ChatColor.GOLD + lottery.getName());
 				plugin.send(player, "");
 				lottery.sendInfo(player);
 				plugin.help(player,
@@ -460,7 +461,8 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 			}
 
 			plugin.reload();
-			plugin.send(player, "[" + plugin.getName() + "] - reloaded.");
+			plugin.send(player, String.format("[%s] - reloaded v%s.",
+					plugin.getName(), plugin.getDescription().getVersion()));
 		}
 
 		else {
@@ -504,7 +506,8 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 
 		plugin.help(player,
 				"---------------------------------------------------");
-		plugin.send(player, "[" + plugin.getName() + "] - Page " + page + "/" + pages);
+		plugin.send(player, "[" + plugin.getName() + "] - Page " + page + "/"
+				+ pages);
 		int stop = (page * 10);
 
 		if (lotteries.isEmpty()) {

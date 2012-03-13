@@ -81,7 +81,7 @@ public class LotteryManager extends Thread implements TimeConstants {
 
 	}
 
-	protected void reloadConfig() {
+	public void reloadConfig() {
 
 		if (lotteryFile == null) {
 			lotteryFile = new File(plugin.getDataFolder(), "lotteries.yml");
@@ -105,7 +105,7 @@ public class LotteryManager extends Thread implements TimeConstants {
 		saveConfig();
 	}
 
-	private void saveConfig() {
+	public void saveConfig() {
 
 		if (lotteryConfig == null || lotteryFile == null) {
 			return;
@@ -252,7 +252,7 @@ public class LotteryManager extends Thread implements TimeConstants {
 
 	}
 
-	private FileConfiguration getConfig() {
+	public FileConfiguration getConfig() {
 
 		if (lotteryConfig == null) {
 			reloadConfig();

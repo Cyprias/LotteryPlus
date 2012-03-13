@@ -1,6 +1,7 @@
 package com.randude14.lotteryplus;
 
 import java.io.File;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -8,6 +9,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import javax.xml.parsers.DocumentBuilderFactory;
 
 import net.milkbowl.vault.economy.Economy;
 import net.milkbowl.vault.permission.Permission;
@@ -29,6 +32,10 @@ import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitScheduler;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 import com.randude14.lotteryplus.io.ObjectLoadStream;
 import com.randude14.lotteryplus.io.ObjectSaveStream;
@@ -49,6 +56,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 	private Logger logger;
 	private BukkitScheduler scheduler;
 	private String logName;
+	private String checkVersion;
 	private File configFile;
 	private File listMaterials;
 	private File listEnchantments;
@@ -153,6 +161,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		if (this.isEnabled()) {
 			info("enabled.");
 			registerListeners(this, signListener);
+			checkVersion = getDescription().getVersion();
 			callTasks();
 			getCommand(CMD_LOTTERY).setExecutor(new LotteryCommands(this));
 			manager.start();
@@ -161,8 +170,21 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 	}
 
 	public void callTasks() {
-		long delay = MINUTE * SERVER_SECOND * config.getReminderMessageTime();
-		scheduler.scheduleSyncRepeatingTask(this, this, delay, delay);
+		long delayAutoMessenger = MINUTE * SERVER_SECOND
+				* config.getReminderMessageTime();
+		scheduler.scheduleSyncRepeatingTask(this, this, delayAutoMessenger,
+				delayAutoMessenger);
+		long delayUpdate = MINUTE * SERVER_SECOND * config.getUpdateDelay();
+		scheduler.scheduleSyncRepeatingTask(this, new Runnable() {
+			public void run() {
+				String currentVersion = updateCheck(checkVersion);
+				if (!checkVersion.endsWith(currentVersion)) {
+					info(String
+							.format("there is a new version of %s: %s (you are running v%s)",
+									getName(), currentVersion, checkVersion));
+				}
+			}
+		}, 0, delayUpdate);
 	}
 
 	public void abort() {
@@ -537,6 +559,31 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 					"You have a lottery reward(s) to claim. Type '/lottery claim' to claim your reward.");
 		}
 
+	}
+
+	public String updateCheck(String currentVersion) {
+		try {
+			URL url = new URL(
+					"http://dev.bukkit.org/server-mods/lotteryplus/files.rss");
+			Document doc = DocumentBuilderFactory.newInstance()
+					.newDocumentBuilder()
+					.parse(url.openConnection().getInputStream());
+			doc.getDocumentElement().normalize();
+			NodeList nodes = doc.getElementsByTagName("item");
+			Node firstNode = nodes.item(0);
+			if (firstNode.getNodeType() == 1) {
+				Element firstElement = (Element) firstNode;
+				NodeList firstElementTagName = firstElement
+						.getElementsByTagName("title");
+				Element firstNameElement = (Element) firstElementTagName
+						.item(0);
+				NodeList firstNodes = firstNameElement.getChildNodes();
+				return firstNodes.item(0).getNodeValue();
+			}
+		} catch (Exception e) {
+		}
+
+		return currentVersion;
 	}
 
 	public boolean isSign(Block block) {
