@@ -440,7 +440,9 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 					return;
 				}
 
-				plugin.broadcast(ChatColor.GOLD + name + ChatColor.YELLOW
+				plugin.broadcast(
+						ChatColor.YELLOW.toString() + "[" + plugin.getName()
+						+ "] - " + ChatColor.GOLD + name + ChatColor.YELLOW
 						+ " is force drawing the lottery " + ChatColor.GOLD
 						+ lottery.getName() + ChatColor.YELLOW
 						+ ", and the winner is...", "lottery.buy");

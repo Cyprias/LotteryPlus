@@ -140,7 +140,16 @@ public class Lottery implements TimeConstants, Runnable {
 
 				if (material != null) {
 					int amount = itemSection.getInt("stack-size", 1);
-					ItemStack item = new ItemStack(material, amount);
+					ItemStack item = null;
+					if (material.getData() != null
+							&& itemSection.contains("data")) {
+						byte data = (byte) itemSection.getInt("data");
+						item = new ItemStack(material, amount, data);
+					}
+
+					else {
+						item = new ItemStack(material, amount);
+					}
 
 					for (String enchantName : itemSection.getKeys(false)) {
 						Enchantment enchantment = Enchantment
@@ -153,10 +162,10 @@ public class Lottery implements TimeConstants, Runnable {
 							try {
 								item.addEnchantment(enchantment, level);
 							} catch (Exception ex) {
-								plugin.warning(String
-										.format("%s: invalid enchantment %s when applying %d to item %s",
-												name, enchantment.getName(),
-												level, material.name()));
+								plugin.warning(name + " - invalid enchantment "
+										+ enchantment.getName()
+										+ " when applying " + level
+										+ " to item " + material.name());
 							}
 
 						}
@@ -205,7 +214,16 @@ public class Lottery implements TimeConstants, Runnable {
 
 				if (material != null) {
 					int amount = itemSection.getInt("stack-size", 1);
-					ItemStack item = new ItemStack(material, amount);
+					ItemStack item = null;
+					if (material.getData() != null
+							&& itemSection.contains("data")) {
+						byte data = (byte) itemSection.getInt("data");
+						item = new ItemStack(material, amount, data);
+					}
+
+					else {
+						item = new ItemStack(material, amount);
+					}
 
 					for (String enchantName : itemSection.getKeys(false)) {
 						Enchantment enchantment = Enchantment
@@ -252,7 +270,7 @@ public class Lottery implements TimeConstants, Runnable {
 		this.maxPlayers += section.getInt("reset-add-max-players", 0);
 		this.ticketTax += section.getDouble("reset-add-ticket-tax", 0.0);
 		this.potTax += section.getDouble("reset-add-pot-tax", 0.0);
-		
+
 		if (section.contains("reset-add-item-rewards")) {
 			ConfigurationSection itemRewardsSection = section
 					.getConfigurationSection("reset-add-item-rewards");
@@ -292,7 +310,7 @@ public class Lottery implements TimeConstants, Runnable {
 			}
 
 		}
-		
+
 	}
 
 	public boolean isItemOnly() {
@@ -760,6 +778,9 @@ public class Lottery implements TimeConstants, Runnable {
 			for (ItemStack item : itemRewards) {
 				Map<String, Object> saveMap = new HashMap<String, Object>();
 				saveMap.put("stack-size", item.getAmount());
+				if (item.getData() != null) {
+					saveMap.put("data", item.getData().getData());
+				}
 				Map<Enchantment, Integer> enchantments = item.getEnchantments();
 				for (Enchantment enchantment : enchantments.keySet()) {
 					saveMap.put(enchantment.getName(),

@@ -1,12 +1,14 @@
 package com.randude14.lotteryplus;
 
 import java.io.File;
+import java.io.PrintWriter;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -63,6 +65,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 	private File listColors;
 	private File claimsFile;
 	private File winnersFile;
+	private File winnersLogFile;
 	private Random random;
 	private Permission perm;
 	private Economy econ;
@@ -82,8 +85,8 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		configFile = new File(getDataFolder(), "config.yml");
 		listColors = new File(getDataFolder(), "colors.yml");
 		listMaterials = new File(getDataFolder(), "items.yml");
+		winnersLogFile = new File(getDataFolder(), "winners.log");
 		listEnchantments = new File(getDataFolder(), "enchantments.yml");
-
 		signListener = new SignListener(this);
 
 		if (!configFile.exists()) {
@@ -178,11 +181,12 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		scheduler.scheduleSyncRepeatingTask(this, new Runnable() {
 			public void run() {
 				String currentVersion = updateCheck(checkVersion);
-				if (!checkVersion.endsWith(currentVersion)) {
+				if (!currentVersion.endsWith(checkVersion)) {
 					info(String
 							.format("there is a new version of %s: %s (you are running v%s)",
 									getName(), currentVersion, checkVersion));
 				}
+				// info("Current file name: " + getFileName());
 			}
 		}, 0, delayUpdate);
 	}
@@ -387,7 +391,34 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		while (winners.size() > 5) {
 			winners.remove(0);
 		}
-
+		if (winnersLogFile.exists()) {
+			try {
+				List<String> logs = new ArrayList<String>();
+				Scanner scan = new Scanner(winnersLogFile);
+				while (scan.hasNextLine()) {
+					logs.add(scan.nextLine());
+				}
+				logs.add(winner);
+				PrintWriter writer = new PrintWriter(winnersLogFile);
+				for (String winnerLog : logs) {
+					writer.println(winnerLog);
+				}
+				writer.flush();
+				writer.close();
+			} catch (Exception ex) {
+				warning("exception caught in addWinner(String winner).");
+			}
+		}
+		else {
+			try {
+				PrintWriter writer = new PrintWriter(winnersLogFile);
+				writer.println(winner);
+				writer.flush();
+				writer.close();
+			} catch (Exception ex) {
+				warning("exception caught in addWinner(String winner).");
+			}
+		}
 	}
 
 	public void addClaim(String name, String lottery,
@@ -580,12 +611,26 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 				NodeList firstNodes = firstNameElement.getChildNodes();
 				return firstNodes.item(0).getNodeValue();
 			}
-		} catch (Exception e) {
+		} catch (Exception ex) {
 		}
 
 		return currentVersion;
 	}
 
+	/*
+	 * public String getFileName() { try { URL url = new URL(
+	 * "http://dev.bukkit.org/server-mods/lotteryplus/files.rss"); Document doc
+	 * = DocumentBuilderFactory.newInstance() .newDocumentBuilder()
+	 * .parse(url.openConnection().getInputStream());
+	 * doc.getDocumentElement().normalize(); NodeList nodes =
+	 * doc.getElementsByTagName("item"); Node firstNode = nodes.item(0); if
+	 * (firstNode.getNodeType() == 1) { Element firstElement = (Element)
+	 * firstNode; NodeList firstElementTagName = firstElement
+	 * .getElementsByTagName("Filename"); firstElementTagName. } } catch
+	 * (Exception ex) { ex.printStackTrace(); }
+	 * 
+	 * return null; }
+	 */
 	public boolean isSign(Block block) {
 		return block.getType() == Material.SIGN_POST
 				|| block.getType() == Material.WALL_SIGN;

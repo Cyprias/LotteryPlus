@@ -62,21 +62,21 @@ public class LotteryManager extends Thread implements TimeConstants {
 				}
 
 			}
-			
+
 			try {
 				Thread.sleep(1000);
 			} catch (Exception ex) {
 			}
 
 			for (Lottery lottery : lotteries) {
-				
+
 				try {
-				lottery.countdown();
-				} catch (Exception ex) {				
+					lottery.countdown();
+				} catch (Exception ex) {
 				}
-				
+
 			}
-			
+
 		}
 
 	}
@@ -191,14 +191,14 @@ public class LotteryManager extends Thread implements TimeConstants {
 		}
 		reloading = false;
 	}
-	
+
 	private void reloadLottery(String lotteryName, boolean flag) {
 		Lottery lottery = searchLottery(lotteryName);
 
 		if (lottery == null) {
 			return;
 		}
-		if(!flag) {
+		if (!flag) {
 			reloading = true;
 		}
 		reloadConfig();
@@ -208,7 +208,7 @@ public class LotteryManager extends Thread implements TimeConstants {
 		ConfigurationSection lotterySection = lotteriesSection
 				.getConfigurationSection(lottery.getName());
 		lottery.loadData(lotterySection);
-		if(!flag) {
+		if (!flag) {
 			reloading = false;
 		}
 	}
