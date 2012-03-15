@@ -282,7 +282,16 @@ public class Lottery implements TimeConstants, Runnable {
 
 				if (material != null) {
 					int amount = itemSection.getInt("stack-size", 1);
-					ItemStack item = new ItemStack(material, amount);
+					ItemStack item = null;
+					if (material.getData() != null
+							&& itemSection.contains("data")) {
+						byte data = (byte) itemSection.getInt("data");
+						item = new ItemStack(material, amount, data);
+					}
+
+					else {
+						item = new ItemStack(material, amount);
+					}
 
 					for (String enchantName : itemSection.getKeys(false)) {
 						Enchantment enchantment = Enchantment
@@ -304,7 +313,7 @@ public class Lottery implements TimeConstants, Runnable {
 						}
 
 					}
-					this.itemRewards.add(item);
+					itemRewards.add(item);
 				}
 
 			}
