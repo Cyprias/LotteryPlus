@@ -73,9 +73,9 @@ public class LotteryTimer implements TimeConstants {
 								+ " is ending. and the winner is...", "lottery.buy");
 				plugin.getScheduler().scheduleSyncDelayedTask(plugin, lottery,
 						SERVER_SECOND * 3);
+				running = false;
 				lottery.setDrawing(true);
 				lottery.updateSigns();
-				running = false;
 			}
 			
 		}

@@ -1,11 +1,14 @@
 package com.randude14.lotteryplus;
 
 import java.util.List;
+import java.util.Map;
 
 import net.milkbowl.vault.economy.Economy;
 
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -319,12 +322,12 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 
 				econ.withdrawPlayer(name, add);
 				lottery.addToPot(add);
-				plugin.send(player, "Player has added " + format(add)
+				plugin.send(player, "Player has added " + plugin.format(add)
 						+ " to the pot of lottery " + lottery);
 			}
 
 			else {
-
+				plugin.help(player, "/lottery addtopot <lottery name>");
 			}
 
 		}
@@ -358,54 +361,28 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 				double pot = claim.getPot();
 				String lottery = claim.getLotteryName();
 				List<ItemStack> itemRewards = claim.getItemRewards();
-				boolean flag = false;
 
 				if (pot != -1) {
 					econ.depositPlayer(name, pot);
-					plugin.send(player, "Awarded player " + format(pot)
+					plugin.send(player, "Awarded player " + plugin.format(pot)
 							+ " from lottery " + lottery);
 					claim.setPot(-1);
 				}
 
 				if (itemRewards != null && !itemRewards.isEmpty()) {
 
-					for (int i = 0; i < itemRewards.size(); i++) {
-						ItemStack itemReward = itemRewards.get(i);
-
-						if (!player.getInventory().addItem(itemReward)
-								.isEmpty()) {
-							plugin.error(player,
-									"There was not enough room for your item "
-											+ ChatColor.GOLD
-											+ itemReward.getType().name()
-											+ ChatColor.RED + " for lottery "
-											+ ChatColor.GOLD + lottery + ".");
-							flag = true;
-							i = itemRewards.size();
-						}
-
-						else {
-
-							if (!flag) {
-								plugin.send(player, "Awarded player with item "
-										+ ChatColor.GOLD
-										+ itemReward.getType().name()
-										+ ChatColor.YELLOW + " form lottery "
-										+ ChatColor.GOLD + lottery);
-								itemRewards.remove(i);
-								i--;
-							}
-
-						}
-
+					Map<Integer, ItemStack> itemsToBeDropped = player.getInventory()
+							.addItem(
+									itemRewards.toArray(new ItemStack[itemRewards
+											.size()]));
+					World world = player.getWorld();
+					Location playerLoc = player.getLocation();
+					for (ItemStack item : itemsToBeDropped.values()) {
+						world.dropItem(playerLoc, item);
 					}
-
+					
 				}
-
-				if (itemRewards == null || itemRewards.isEmpty()) {
-					claims.remove(cntr);
-				}
-
+				claims.remove(cntr);
 			}
 
 		}
@@ -442,10 +419,12 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 
 				plugin.broadcast(
 						ChatColor.YELLOW.toString() + "[" + plugin.getName()
-						+ "] - " + ChatColor.GOLD + name + ChatColor.YELLOW
-						+ " is force drawing the lottery " + ChatColor.GOLD
-						+ lottery.getName() + ChatColor.YELLOW
-						+ ", and the winner is...", "lottery.buy");
+								+ "] - " + ChatColor.GOLD + name
+								+ ChatColor.YELLOW
+								+ " is force drawing the lottery "
+								+ ChatColor.GOLD + lottery.getName()
+								+ ChatColor.YELLOW + ", and the winner is...",
+						"lottery.buy");
 				lottery.stop();
 				lottery.setDrawing(true);
 				lottery.updateSigns();
@@ -477,10 +456,6 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 			helpMessage(player);
 		}
 
-	}
-
-	public String format(double d) {
-		return String.format("%,.2f", d);
 	}
 
 	private boolean isValidInt(String str) {

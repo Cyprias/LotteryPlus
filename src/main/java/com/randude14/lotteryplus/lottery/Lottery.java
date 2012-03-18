@@ -350,10 +350,6 @@ public class Lottery implements TimeConstants, Runnable {
 		return drawing;
 	}
 
-	public boolean isOver() {
-		return drawing;
-	}
-
 	public void setDrawing(boolean flag) {
 		this.drawing = flag;
 	}
@@ -507,6 +503,10 @@ public class Lottery implements TimeConstants, Runnable {
 		return tickets;
 	}
 
+	public long getTime() {
+		return timer.getTime();
+	}
+
 	public void countdown() {
 		timer.countdown();
 	}
@@ -577,6 +577,7 @@ public class Lottery implements TimeConstants, Runnable {
 			readResetData();
 			timer.reset();
 			timer.start();
+			setDrawing(false);
 			return;
 		}
 
@@ -631,7 +632,6 @@ public class Lottery implements TimeConstants, Runnable {
 		message.append("!");
 		plugin.getServer()
 				.broadcastMessage(ChatColor.GOLD.toString() + message);
-		Player pWinner = Bukkit.getPlayer(winner);
 		StringBuilder logWinner = new StringBuilder(name + ": " + winner);
 
 		if (isItemOnly()) {
@@ -671,29 +671,21 @@ public class Lottery implements TimeConstants, Runnable {
 
 		plugin.addWinner(logWinner.toString());
 		Economy econ = plugin.getEconomy();
+		Player pWinner = Bukkit.getPlayer(winner);
 
 		if (pWinner != null) {
 
 			if (!isItemOnly()) {
 				econ.depositPlayer(winner, winnings);
 			}
-
-			for (int cntr = 0; cntr < itemRewards.size(); cntr++) {
-				ItemStack itemReward = itemRewards.get(cntr);
-
-				if (!pWinner.getInventory().addItem(itemReward).isEmpty()) {
-					plugin.error(
-							pWinner,
-							"you did not have enough room in your inventory! type '/lottery claim' to claim your reward");
-					plugin.addClaim(winner, name, itemRewards);
-					cntr = itemRewards.size();
-				}
-
-				else {
-					itemRewards.remove(cntr);
-					cntr--;
-				}
-
+			Map<Integer, ItemStack> itemsToBeDropped = pWinner.getInventory()
+					.addItem(
+							itemRewards.toArray(new ItemStack[itemRewards
+									.size()]));
+			World world = pWinner.getWorld();
+			Location winnerLoc = pWinner.getLocation();
+			for (ItemStack item : itemsToBeDropped.values()) {
+				world.dropItem(winnerLoc, item);
 			}
 
 		}
@@ -720,15 +712,12 @@ public class Lottery implements TimeConstants, Runnable {
 
 		if (repeat) {
 			reset();
+			setDrawing(false);
 			return;
 		}
-		drawing = false;
+		setDrawing(false);
 		updateSigns();
 		plugin.getLotteryManager().removeLottery(name);
-	}
-
-	public LotteryTimer getTimer() {
-		return timer;
 	}
 
 	public Plugin getPlugin() {

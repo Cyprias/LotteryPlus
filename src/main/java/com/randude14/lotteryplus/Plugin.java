@@ -77,7 +77,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		logger = Logger.getLogger("Minecraft");
 		scheduler = getServer().getScheduler();
 		logName = "[" + this + "]";
-		random = new Random("Lottery+".hashCode());
+		random = new Random(getName().hashCode());
 		config = new LotteryConfig(this);
 		manager = new LotteryManager(this);
 		claimsFile = new File(getDataFolder(), "claims");
@@ -167,7 +167,6 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 			checkVersion = getDescription().getVersion();
 			callTasks();
 			getCommand(CMD_LOTTERY).setExecutor(new LotteryCommands(this));
-			manager.start();
 		}
 
 	}
@@ -186,9 +185,14 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 							.format("there is a new version of %s: %s (you are running v%s)",
 									getName(), currentVersion, checkVersion));
 				}
-				// info("Current file name: " + getFileName());
+
 			}
 		}, 0, delayUpdate);
+		scheduler.scheduleSyncDelayedTask(this, new Runnable() {
+			public void run() {
+				manager.start();
+			}
+		});
 	}
 
 	public void abort() {
@@ -473,7 +477,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		String name = player.getName();
 
 		if (!econ.hasAccount(name)) {
-			error(player, "Player does not have an account");
+			error(player, "You do not have an account");
 			send(player, "Transaction cancelled");
 			help(player, "---------------------------------------------------");
 			return;
@@ -504,7 +508,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 
 		double cost = tickets * lottery.getTicketCost();
 		if (econ.getBalance(name) < cost) {
-			error(player, "Player does not have enough money");
+			error(player, "You do not have enough money");
 			send(player, "Transaction cancelled");
 			help(player, "---------------------------------------------------");
 			return;
@@ -617,20 +621,6 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		return currentVersion;
 	}
 
-	/*
-	 * public String getFileName() { try { URL url = new URL(
-	 * "http://dev.bukkit.org/server-mods/lotteryplus/files.rss"); Document doc
-	 * = DocumentBuilderFactory.newInstance() .newDocumentBuilder()
-	 * .parse(url.openConnection().getInputStream());
-	 * doc.getDocumentElement().normalize(); NodeList nodes =
-	 * doc.getElementsByTagName("item"); Node firstNode = nodes.item(0); if
-	 * (firstNode.getNodeType() == 1) { Element firstElement = (Element)
-	 * firstNode; NodeList firstElementTagName = firstElement
-	 * .getElementsByTagName("Filename"); firstElementTagName. } } catch
-	 * (Exception ex) { ex.printStackTrace(); }
-	 * 
-	 * return null; }
-	 */
 	public boolean isSign(Block block) {
 		return block.getType() == Material.SIGN_POST
 				|| block.getType() == Material.WALL_SIGN;

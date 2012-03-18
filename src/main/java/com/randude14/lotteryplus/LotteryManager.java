@@ -55,28 +55,33 @@ public class LotteryManager extends Thread implements TimeConstants {
 		while (plugin.isEnabled()) {
 
 			while (reloading) {
-
-				try {
-					Thread.sleep(10);
-				} catch (Exception ex) {
-				}
-
+				pause(10L);
 			}
-
-			try {
-				Thread.sleep(1000);
-			} catch (Exception ex) {
-			}
-
+			pause(1000L);
 			for (Lottery lottery : lotteries) {
+				lottery.countdown();
 
-				try {
-					lottery.countdown();
-				} catch (Exception ex) {
+				if (lottery.isDrawing()) {
+					long delay = plugin.getLotteryConfig().getTimeAfterDraws() + 3;
+					while(delay > 0) {
+						pause(1000L);
+						delay--;
+					}
+					
 				}
 
 			}
 
+		}
+
+	}
+
+	private void pause(long milliseconds) {
+
+		try {
+			Thread.sleep(milliseconds);
+		} catch (Exception ex) {
+			plugin.warning("exception caught in pause() - " + ex);
 		}
 
 	}

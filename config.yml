@@ -1,20 +1,12 @@
 properties:
   permissions: false
   update-delay: 60
+  time-after-draws: 5
   reminder-message: '&eDont forget to check your servers lotteries. Type /lottery
     list to list lotteries.'
   reminder-message-time: 30
   sign-message: '&eName: <name><newline>&eTicket Cost: <ticketcost>'
-lottery properties:
-  min-players: 2
-  default-ticketcost: 1.0
-  max-players: 10
-  default-pot: 100.0
 signs:
-  over:
-    line1: <name>
-    line2: Over
-    line3: <winner>
   normal:
     line1: <name>
     line2: <time>
@@ -23,3 +15,7 @@ signs:
     line1: <name>
     line2: Drawing...
     line3: <reward>
+  over:
+    line1: <name>
+    line2: Over
+    line3: <winner>

@@ -22,6 +22,7 @@ public class LotteryConfig implements FormatOptions {
 	private static final String DEFAULT_SIGN_END_THREE = "<winner>";
 	private static final long DEFAULT_REMINDER_MESSAGE_TIME = 30L;
 	private static final long DEFAULT_UPDATE_TIME = 60L;
+	private static final long DEFAULT_TIME_AFTER_DRAWS = 5L;
 	private static final boolean DEFAULT_PERMISSIONS = false;
 	private static final int DEFAULT_MAX_PLAYERS = 10;
 	private static final int DEFAULT_MIN_PLAYERS = 2;
@@ -31,13 +32,8 @@ public class LotteryConfig implements FormatOptions {
 	private static final int DEFAULT_MAXTICKETS = 10;
 	private boolean PERMISSIONS;
 	private long MESSAGE_TIME;
-	private int MAX_PLAYERS;
-	private int MIN_PLAYERS;
-	private double POT;
-	private double TICKETCOST;
-	private int MAXTICKETS;
-	private long TIME;
 	private long UPDATE_TIME;
+	private long TIME_AFTER_DRAWS;
 	private String REMINDER_MESSAGE;
 	private String SIGN_BUY_MESSAGE;
 	private String[] normalArgs;
@@ -65,19 +61,8 @@ public class LotteryConfig implements FormatOptions {
 					REMINDER_MESSAGE);
 			UPDATE_TIME = properties.getLong("update-delay", DEFAULT_UPDATE_TIME);
 			SIGN_BUY_MESSAGE = properties.getString("sign-message", DEFAULT_BUY_SIGN_MESSAGE);
+			TIME_AFTER_DRAWS = properties.getLong("time-after-draws", DEFAULT_TIME_AFTER_DRAWS);
 			REMINDER_MESSAGE = plugin.replaceColors(REMINDER_MESSAGE);
-			ConfigurationSection lotteryProperties = plugin.getConfig()
-					.getConfigurationSection("lottery properties");
-			MAX_PLAYERS = lotteryProperties.getInt("max-players",
-					DEFAULT_MAX_PLAYERS);
-			MIN_PLAYERS = lotteryProperties.getInt("min-players",
-					DEFAULT_MIN_PLAYERS);
-			POT = lotteryProperties.getDouble("default-pot", DEFAULT_POT);
-			TICKETCOST = lotteryProperties.getDouble("default-ticketcost",
-					DEFAULT_TICKETCOST);
-			MAXTICKETS = lotteryProperties.getInt("max-tickets",
-					DEFAULT_MAXTICKETS);
-			TIME = lotteryProperties.getLong("time", DEFAULT_TIME);
 			ConfigurationSection signSection = plugin.getConfig()
 					.getConfigurationSection("signs");
 			normalArgs[0] = signSection.getString("normal.line1",
@@ -112,11 +97,7 @@ public class LotteryConfig implements FormatOptions {
 		propertyMap.put("reminder-message", DEFAULT_REMINDER_MESSAGE);
 		propertyMap.put("update-delay", DEFAULT_UPDATE_TIME);
 		propertyMap.put("sign-message", DEFAULT_BUY_SIGN_MESSAGE);
-		Map<String, Object> lotteryMap = new HashMap<String, Object>();
-		lotteryMap.put("default-pot", DEFAULT_POT);
-		lotteryMap.put("default-ticketcost", DEFAULT_TICKETCOST);
-		lotteryMap.put("max-players", DEFAULT_MAX_PLAYERS);
-		lotteryMap.put("min-players", DEFAULT_MIN_PLAYERS);
+		propertyMap.put("time-after-draws", DEFAULT_TIME_AFTER_DRAWS);
 		Map<String, Object> signMap = new HashMap<String, Object>();
 		signMap.put("normal.line1", DEFAULT_SIGN_NORMAL_ONE);
 		signMap.put("normal.line2", DEFAULT_SIGN_NORMAL_TWO);
@@ -130,7 +111,6 @@ public class LotteryConfig implements FormatOptions {
 		
 		FileConfiguration config = plugin.getConfig();
 		config.createSection("properties", propertyMap);
-		config.createSection("lottery properties", lotteryMap);
 		config.createSection("signs", signMap);
 		plugin.saveConfig();
 		plugin.info("config written.");
@@ -143,27 +123,27 @@ public class LotteryConfig implements FormatOptions {
 	}
 
 	public int getDefaultMaxPlayers() {
-		return MAX_PLAYERS;
+		return DEFAULT_MAX_PLAYERS;
 	}
 
 	public int getDefaultMinPlayers() {
-		return MIN_PLAYERS;
+		return DEFAULT_MIN_PLAYERS;
 	}
 
 	public double getDefaultPot() {
-		return POT;
+		return DEFAULT_POT;
 	}
 
 	public double getDefaultTicketCost() {
-		return TICKETCOST;
+		return DEFAULT_TICKETCOST;
 	}
 
 	public int getDefaultMaxTickets() {
-		return MAXTICKETS;
+		return DEFAULT_MAXTICKETS;
 	}
 
 	public long getDefaultTime() {
-		return TIME;
+		return DEFAULT_TIME;
 	}
 	
 	public String[] getNormalArgs() {
@@ -188,6 +168,10 @@ public class LotteryConfig implements FormatOptions {
 	
 	public long getUpdateDelay() {
 		return UPDATE_TIME;
+	}
+	
+	public long getTimeAfterDraws() {
+		return TIME_AFTER_DRAWS;
 	}
 	
 	public String getBuyMessage() {
