@@ -364,7 +364,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		
 		for(OfflinePlayer player : getServer().getOfflinePlayers()) {
 			
-			if(name.equalsIgnoreCase(name)) {
+			if(player.getName().equalsIgnoreCase(name)) {
 				return player;
 			}
 			
