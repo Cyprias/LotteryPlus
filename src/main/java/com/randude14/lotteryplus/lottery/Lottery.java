@@ -15,6 +15,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Sign;
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
@@ -469,6 +470,22 @@ public class Lottery implements TimeConstants, Runnable {
 		plugin.send(player, "Players Entered: " + playersEntered());
 		plugin.send(player,
 				"Tickets Bought: " + getTicketsBought(player.getName()));
+	}
+	
+	public void sendInfo(CommandSender sender) {
+		sender.sendMessage("Time Left: " + timer.format()
+				+ " - WW:DD:HH:MM:SS");
+		if (!isItemOnly()) {
+			sender.sendMessage("Pot: " + formatPot());
+		}
+		for (ItemStack itemReward : itemRewards) {
+			sender.sendMessage("Item Reward: " + itemReward.getType().name()
+					+ " " + itemReward.getAmount());
+		}
+		sender.sendMessage("Ticket Cost: " + formatTicketCost());
+		sender.sendMessage("Ticket Tax: " + formatTicketTax());
+		sender.sendMessage("Pot Tax: " + formatPotTax());
+		sender.sendMessage("Players Entered: " + playersEntered());
 	}
 
 	public int playersEntered() {

@@ -58,16 +58,24 @@ public class LotteryManager extends Thread implements TimeConstants {
 				pause(10L);
 			}
 			pause(1000L);
-			for (Lottery lottery : lotteries) {
-				lottery.countdown();
+			for (int cntr = 0;cntr < lotteries.size();cntr++) {
+				Lottery lottery = lotteries.get(cntr);
+				try {
+					lottery.countdown();
+				} catch (Exception ex) {
+				}
 
 				if (lottery.isDrawing()) {
 					long delay = plugin.getLotteryConfig().getTimeAfterDraws() + 3;
-					while(delay > 0) {
+					while (delay > 0) {
 						pause(1000L);
 						delay--;
 					}
-					
+
+				}
+				
+				if(!nameExists(lottery.getName())) {
+					cntr--;
 				}
 
 			}

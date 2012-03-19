@@ -20,7 +20,9 @@ import net.milkbowl.vault.permission.Permission;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.block.Block;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -201,6 +203,8 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 	}
 
 	public void reload() {
+	    reloadConfig();
+	    config.loadConfig();
 		manager.reloadLotteries();
 	}
 
@@ -355,6 +359,18 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 				&& loc1.getBlockY() == loc2.getBlockY()
 				&& loc1.getBlockZ() == loc2.getBlockZ();
 	}
+	
+	public OfflinePlayer getOfflinePlayer(String name) {
+		
+		for(OfflinePlayer player : getServer().getOfflinePlayers()) {
+			
+			if(name.equalsIgnoreCase(name)) {
+				return player;
+			}
+			
+		}
+		return getServer().getOfflinePlayer(name);
+	}
 
 	public void send(Player player, String mess, ChatColor color) {
 		player.sendMessage(color + mess);
@@ -471,6 +487,26 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		}
 
 		help(player, "---------------------------------------------------");
+	}
+	
+	protected void listWinners(CommandSender sender) {
+		sender.sendMessage("---------------------------------------------------");
+		sender.sendMessage(logName + " - winners");
+		sender.sendMessage("");
+
+		if (winners.isEmpty()) {
+			sender.sendMessage("There are currently no winners");
+		}
+
+		else {
+
+			for (int cntr = 0; cntr < winners.size(); cntr++) {
+				sender.sendMessage((cntr + 1) + ". " + winners.get(cntr));
+			}
+
+		}
+
+		sender.sendMessage("---------------------------------------------------");
 	}
 
 	public void playerBuyFromLottery(Player player, Lottery lottery, int tickets) {

@@ -38,18 +38,17 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 		command = command.toLowerCase();
 
 		if (isPlayer(sender)) {
-			handleCommand((Player) sender, args);
-			return false;
+			handlePlayerCommand((Player) sender, args);
 		}
 
 		else {
-			sender.sendMessage("[" + plugin.getName() + "] - In game use only.");
+			handleConsoleCommand(sender, args);
 		}
 
 		return false;
 	}
 
-	private void handleCommand(Player player, String[] args) {
+	private void handlePlayerCommand(Player player, String[] args) {
 		Economy econ = plugin.getEconomy();
 		String name = player.getName();
 
@@ -63,7 +62,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 			helpMessage(player);
 		}
 
-		else if ("list".equals(args[0])) {
+		else if ("list".equalsIgnoreCase(args[0])) {
 
 			if (!plugin.hasPermission(player, "lottery.list")) {
 				plugin.error(player, "You do not have permission.");
@@ -95,7 +94,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 			listLotteries(player, page);
 		}
 
-		else if ("info".equals(args[0])) {
+		else if ("info".equalsIgnoreCase(args[0])) {
 
 			if (!plugin.hasPermission(player, "lottery.info")) {
 				plugin.error(player, "You do not have permission.");
@@ -130,7 +129,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 
 		}
 
-		else if ("buy".equals(args[0])) {
+		else if ("buy".equalsIgnoreCase(args[0])) {
 
 			if (!plugin.hasPermission(player, "lottery.buy")) {
 				plugin.error(player, "You do not have permission.");
@@ -208,7 +207,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 
 		}
 
-		else if ("reward".equals(args[0])) {
+		else if ("reward".equalsIgnoreCase(args[0])) {
 
 			if (!plugin.hasPermission(player, "lottery.admin.reward")) {
 				plugin.error(player, "You do not have permission.");
@@ -222,8 +221,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 
 			else if (args.length == 4) {
 				String rewarded = args[1];
-				OfflinePlayer offline = plugin.getServer().getOfflinePlayer(
-						rewarded);
+				OfflinePlayer offline = plugin.getOfflinePlayer(rewarded);
 
 				if (!offline.hasPlayedBefore()) {
 					plugin.error(player,
@@ -273,7 +271,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 
 		}
 
-		else if ("addtopot".equals(args[0])) {
+		else if ("addtopot".equalsIgnoreCase(args[0])) {
 
 			if (!plugin.hasPermission(player, "lottery.addtopot")) {
 				plugin.error(player, "You do not have permission.");
@@ -332,7 +330,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 
 		}
 
-		else if ("claim".equals(args[0])) {
+		else if ("claim".equalsIgnoreCase(args[0])) {
 
 			if (!plugin.hasPermission(player, "lottery.buy")) {
 				plugin.error(player, "You do not have permission.");
@@ -366,28 +364,37 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 					econ.depositPlayer(name, pot);
 					plugin.send(player, "Awarded player " + plugin.format(pot)
 							+ " from lottery " + lottery);
-					claim.setPot(-1);
 				}
 
 				if (itemRewards != null && !itemRewards.isEmpty()) {
 
-					Map<Integer, ItemStack> itemsToBeDropped = player.getInventory()
-							.addItem(
-									itemRewards.toArray(new ItemStack[itemRewards
-											.size()]));
+					Map<Integer, ItemStack> itemsToBeDropped = player
+							.getInventory().addItem(
+									itemRewards
+											.toArray(new ItemStack[itemRewards
+													.size()]));
 					World world = player.getWorld();
 					Location playerLoc = player.getLocation();
 					for (ItemStack item : itemsToBeDropped.values()) {
 						world.dropItem(playerLoc, item);
 					}
-					
+
+					String message = "Awarded player ";
+					if (itemRewards.size() == 1) {
+						message += "a(n) " + ChatColor.GOLD.toString()
+								+ itemRewards.get(0).getType().name() + ".";
+					} else {
+						message += ChatColor.GOLD.toString()
+								+ itemRewards.size() + " items.";
+					}
+					plugin.send(player, message);
 				}
 				claims.remove(cntr);
 			}
 
 		}
 
-		else if ("winners".equals(args[0])) {
+		else if ("winners".equalsIgnoreCase(args[0])) {
 
 			if (!plugin.hasPermission(player, "lottery.winners")) {
 				plugin.error(player, "You do not have permission.");
@@ -397,7 +404,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 			plugin.listWinners(player);
 		}
 
-		else if ("draw".equals(args[0])) {
+		else if ("draw".equalsIgnoreCase(args[0])) {
 
 			if (!plugin.hasPermission(player, "lottery.admin.draw")) {
 				plugin.error(player, "You do not have permission.");
@@ -434,7 +441,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 
 		}
 
-		else if ("reload".equals(args[0])) {
+		else if ("reload".equalsIgnoreCase(args[0])) {
 
 			if (!plugin.hasPermission(player, "lottery.admin.relaod")) {
 				plugin.error(player, "You do not have permission.");
@@ -454,6 +461,215 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 			}
 
 			helpMessage(player);
+		}
+
+	}
+
+	private void handleConsoleCommand(CommandSender sender, String[] args) {
+
+		if (args.length == 0) {
+			helpMessage(sender);
+		}
+
+		else if ("list".equalsIgnoreCase(args[0])) {
+
+			if (args.length > 2) {
+				sender.sendMessage("Too many arguments.");
+				return;
+			}
+
+			int page;
+			if (args.length == 2) {
+
+				if (!isValidInt(args[1])) {
+					sender.sendMessage("Page is not a valid integer.");
+					return;
+				}
+				page = Integer.parseInt(args[1]);
+			}
+
+			else {
+				page = 1;
+			}
+
+			listLotteries(sender, page);
+		}
+
+		else if ("info".equalsIgnoreCase(args[0])) {
+
+			if (args.length > 2) {
+				sender.sendMessage("Too many arguments.");
+			}
+
+			else if (args.length == 1) {
+				sender.sendMessage("/lottery info <lottery name>");
+			}
+
+			else {
+
+				Lottery lottery = manager.searchLottery(args[1]);
+				if (lottery == null) {
+					sender.sendMessage(String.format("%s does not exist!"));
+					return;
+				}
+
+				sender.sendMessage("---------------------------------------------------");
+				sender.sendMessage(String.format("[%s] - lottery info for %s",
+						plugin.getName(), lottery.getName()));
+				sender.sendMessage("");
+				lottery.sendInfo(sender);
+				sender.sendMessage("---------------------------------------------------");
+			}
+
+		}
+
+		else if ("reward".equals(args[0])) {
+
+			if (args.length < 4) {
+				sender.sendMessage("/lottery reward <player> <lottery name> <x tickets>");
+			}
+
+			else if (args.length == 4) {
+				String rewarded = args[1];
+				OfflinePlayer offline = plugin.getOfflinePlayer(rewarded);
+
+				if (!offline.hasPlayedBefore()) {
+					sender.sendMessage(args[1]
+							+ " has not been on this server before.");
+					return;
+				}
+
+				Lottery lottery = manager.searchLottery(args[2]);
+
+				if (lottery == null) {
+					sender.sendMessage("Lottery does not exist.");
+					return;
+				}
+
+				if (!isValidInt(args[3])) {
+					sender.sendMessage("Invalid number.");
+					return;
+				}
+				int tickets = Integer.parseInt(args[3]);
+				lottery.playerBought(offline.getName(), tickets);
+				sender.sendMessage("Player " + offline.getName()
+						+ " has been awarded " + tickets
+						+ " ticket(s) for the lottery "
+						+ ChatColor.GOLD.toString() + lottery.getName());
+				Player rewardedPlayer = offline.getPlayer();
+
+				if (rewardedPlayer != null) {
+					plugin.send(rewardedPlayer, "You have been rewarded "
+							+ tickets + " ticket(s) for the lottery "
+							+ ChatColor.GOLD + lottery.getName()
+							+ ChatColor.YELLOW + " from admin "
+							+ ChatColor.GOLD + " CONSOLE.");
+				}
+
+			}
+
+			else {
+				sender.sendMessage("Too many arguments.");
+			}
+
+		}
+
+		else if ("addtopot".equalsIgnoreCase(args[0])) {
+
+			if (args.length > 3) {
+				sender.sendMessage("Too many arguments.");
+			}
+
+			else if (args.length == 3) {
+
+				Lottery lottery = manager.searchLottery(args[1]);
+
+				if (lottery == null) {
+					sender.sendMessage("Lottery not found.");
+					return;
+				}
+
+				if (lottery.isItemOnly()) {
+					sender.sendMessage("Lottery " + lottery.getName()
+							+ " is currently an 'item-only' lottery");
+					return;
+				}
+
+				double add = 0;
+
+				try {
+					add = Double.parseDouble(args[2]);
+				} catch (Exception ex) {
+					sender.sendMessage("Invalid number.");
+					return;
+				}
+
+				lottery.addToPot(add);
+				sender.sendMessage("You have added " + plugin.format(add)
+						+ " to the pot of lottery " + lottery);
+			}
+
+			else {
+				sender.sendMessage("/lottery addtopot <lottery name> <money>");
+			}
+
+		}
+
+		else if ("winners".equalsIgnoreCase(args[0])) {
+
+			if (args.length > 1) {
+				sender.sendMessage("Too many arguments.");
+				return;
+			}
+
+			plugin.listWinners(sender);
+		}
+
+		else if ("draw".equalsIgnoreCase(args[0])) {
+
+			if (args.length > 2) {
+				sender.sendMessage("Too many arguments.");
+				return;
+			}
+
+			else if (args.length == 1) {
+				sender.sendMessage("/lottery draw <lottery name>");
+			}
+
+			else {
+				Lottery lottery = manager.searchLottery(args[1]);
+
+				if (lottery == null) {
+					sender.sendMessage("Lottery not found.");
+					return;
+				}
+
+				plugin.broadcast(
+						ChatColor.YELLOW.toString() + "[" + plugin.getName()
+								+ "] - " + ChatColor.GOLD + "CONSOLE"
+								+ ChatColor.YELLOW
+								+ " is force drawing the lottery "
+								+ ChatColor.GOLD + lottery.getName()
+								+ ChatColor.YELLOW + ", and the winner is...",
+						"lottery.buy");
+				lottery.stop();
+				lottery.setDrawing(true);
+				lottery.updateSigns();
+				plugin.getScheduler().scheduleSyncDelayedTask(plugin, lottery,
+						SERVER_SECOND * 3);
+			}
+
+		}
+
+		else if ("reload".equalsIgnoreCase(args[0])) {
+
+			if (args.length > 1) {
+				sender.sendMessage("Too many arguments");
+				return;
+			}
+
+			plugin.reload();
+			plugin.info("reloaded.");
 		}
 
 	}
@@ -485,6 +701,8 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 				"---------------------------------------------------");
 		plugin.send(player, "[" + plugin.getName() + "] - Page " + page + "/"
 				+ pages);
+		plugin.send(player,
+				"type '/lottery info <lottery name>' for more specific information");
 		int stop = (page * 10);
 
 		if (lotteries.isEmpty()) {
@@ -511,6 +729,46 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 				"---------------------------------------------------");
 	}
 
+	private void listLotteries(CommandSender sender, int page) {
+		List<Lottery> lotteries = manager.getLotteries();
+		int pages = maxPages(lotteries);
+
+		if (pages > pages) {
+			page = pages;
+		}
+
+		if (page < 1) {
+			page = 1;
+		}
+
+		sender.sendMessage("---------------------------------------------------");
+		sender.sendMessage("[" + plugin.getName() + "] - Page " + page + "/"
+				+ pages);
+		sender.sendMessage("type '/lottery info <lottery name>' for more specific information");
+		int stop = (page * 10);
+
+		if (lotteries.isEmpty()) {
+			sender.sendMessage("There are no lotteries.");
+			sender.sendMessage("---------------------------------------------------");
+			return;
+		}
+
+		for (int cntr = stop - 10; cntr < lotteries.size() && cntr < stop; cntr += 2) {
+			Lottery lottery1 = lotteries.get(cntr);
+			String line = String.format("%d. %s", cntr + 1, lottery1.getName());
+
+			if (cntr != lotteries.size() - 1) {
+				Lottery lottery2 = lotteries.get(cntr + 1);
+				line += String.format(" %d. %s", cntr + 2, lottery2.getName());
+				;
+			}
+
+			sender.sendMessage(line);
+		}
+
+		sender.sendMessage("---------------------------------------------------");
+	}
+
 	private int maxPages(List<?> list) {
 		return (list.size() / 10) + 1;
 	}
@@ -518,7 +776,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 	private void helpMessage(Player player) {
 		plugin.help(player,
 				"---------------------------------------------------");
-		plugin.send(player, "[" + plugin.getName() + "] - command list");
+		plugin.send(player, "[" + plugin.getName() + "] - player command list");
 		plugin.send(player, "");
 		plugin.send(player, "1. /lottery - displays this");
 		plugin.send(player, "2. /lottery list <page> - list lotteries");
@@ -539,6 +797,21 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 		plugin.send(player, "10. /lottery reload - reloads the lotteries.yml");
 		plugin.help(player,
 				"---------------------------------------------------");
+	}
+
+	private void helpMessage(CommandSender sender) {
+		sender.sendMessage("---------------------------------------------------");
+		sender.sendMessage("[" + plugin.getName() + "] - console command list");
+		sender.sendMessage("");
+		sender.sendMessage("1. /lottery - displays this");
+		sender.sendMessage("2. /lottery list <page> - list lotteries");
+		sender.sendMessage("3. /lottery info <lottery name> - list specific info on a lottery");
+		sender.sendMessage("4. /lottery reward <player> <lottery name> <money> - reward a user tickets for a lottery");
+		sender.sendMessage("5. /lottery addtopot <lottery name> <money> - add money to the pot of a lottery");
+		sender.sendMessage("6. /lottery winners - list past lottery winners");
+		sender.sendMessage("7. /lottery draw <lottery name> - force draw a lottery");
+		sender.sendMessage("8. /lottery reload - reloads the lotteries.yml");
+		sender.sendMessage("---------------------------------------------------");
 	}
 
 }
