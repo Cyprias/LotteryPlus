@@ -248,7 +248,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 				}
 
 				int tickets = Integer.parseInt(args[3]);
-				lottery.playerBought(offline.getName(), tickets);
+				lottery.playerReward(offline.getName(), tickets);
 				plugin.send(player, "Player " + offline.getName()
 						+ " has been awarded " + tickets
 						+ " ticket(s) for lottery " + ChatColor.GOLD.toString()
@@ -551,7 +551,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 					return;
 				}
 				int tickets = Integer.parseInt(args[3]);
-				lottery.playerBought(offline.getName(), tickets);
+				lottery.playerReward(offline.getName(), tickets);
 				sender.sendMessage("Player " + offline.getName()
 						+ " has been awarded " + tickets
 						+ " ticket(s) for the lottery "
@@ -794,7 +794,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 		plugin.send(player, "8. /lottery winners - list past lottery winners");
 		plugin.send(player,
 				"9. /lottery draw <lottery name> - force draw a lottery");
-		plugin.send(player, "10. /lottery reload - reloads the lotteries.yml");
+		plugin.send(player, "10. /lottery reload - reloads plugin");
 		plugin.help(player,
 				"---------------------------------------------------");
 	}
@@ -810,7 +810,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 		sender.sendMessage("5. /lottery addtopot <lottery name> <money> - add money to the pot of a lottery");
 		sender.sendMessage("6. /lottery winners - list past lottery winners");
 		sender.sendMessage("7. /lottery draw <lottery name> - force draw a lottery");
-		sender.sendMessage("8. /lottery reload - reloads the lotteries.yml");
+		sender.sendMessage("8. /lottery reload - reloads plugin");
 		sender.sendMessage("---------------------------------------------------");
 	}
 

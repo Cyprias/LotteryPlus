@@ -23,6 +23,9 @@ import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -42,7 +45,6 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import com.randude14.lotteryplus.io.ObjectLoadStream;
-import com.randude14.lotteryplus.io.ObjectSaveStream;
 import com.randude14.lotteryplus.listeners.SignListener;
 import com.randude14.lotteryplus.lottery.Lottery;
 import com.randude14.lotteryplus.lottery.LotteryClaim;
@@ -50,6 +52,7 @@ import com.randude14.lotteryplus.util.TimeConstants;
 
 public class Plugin extends JavaPlugin implements Listener, Runnable,
 		TimeConstants {
+	private static Plugin instance;
 	private static final String CMD_LOTTERY = "lottery";
 	private Map<String, List<LotteryClaim>> claims;
 	private Map<String, String> buyers;
@@ -57,6 +60,8 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 	private List<String> winners;
 	private LotteryConfig config;
 	private SignListener signListener;
+	private FileConfiguration claimsConfig;
+	private FileConfiguration winnersConfig;
 	private Logger logger;
 	private BukkitScheduler scheduler;
 	private String logName;
@@ -71,9 +76,13 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 	private Random random;
 	private Permission perm;
 	private Economy econ;
+	private boolean reminderMessageEnabled;
+	private int reminderId;
+	private int updateId = -1;
 
 	@SuppressWarnings("unchecked")
 	public void onEnable() {
+		instance = this;
 		buyers = new HashMap<String, String>();
 		winners = new ArrayList<String>();
 		logger = Logger.getLogger("Minecraft");
@@ -82,8 +91,8 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		random = new Random(getName().hashCode());
 		config = new LotteryConfig(this);
 		manager = new LotteryManager(this);
-		claimsFile = new File(getDataFolder(), "claims");
-		winnersFile = new File(getDataFolder(), "winners");
+		claimsFile = new File(getDataFolder(), "claims.yml");
+		winnersFile = new File(getDataFolder(), "winners.yml");
 		configFile = new File(getDataFolder(), "config.yml");
 		listColors = new File(getDataFolder(), "colors.yml");
 		listMaterials = new File(getDataFolder(), "items.yml");
@@ -132,35 +141,56 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 			return;
 		}
 
-		try {
-			ObjectLoadStream stream = new ObjectLoadStream(claimsFile);
-			Map<String, List<Map<String, Object>>> savesMap = (Map<String, List<Map<String, Object>>>) stream
-					.readObject();
-			claims = new HashMap<String, List<LotteryClaim>>();
+		claimsConfig = YamlConfiguration.loadConfiguration(claimsFile);
+		winnersConfig = YamlConfiguration.loadConfiguration(winnersFile);
+		File oldClaimsFile = new File(getDataFolder(), "claims");
+		File oldWinnersFile = new File(getDataFolder(), "winners");
 
-			for (String player : savesMap.keySet()) {
-				List<Map<String, Object>> saves = savesMap.get(player);
-				List<LotteryClaim> claims = new ArrayList<LotteryClaim>();
-				this.claims.put(player, claims);
+		if (oldClaimsFile.exists()) {
 
-				for (Map<String, Object> save : saves) {
-					LotteryClaim claim = LotteryClaim.deserialize(save);
-					claims.add(claim);
+			try {
+				ObjectLoadStream stream = new ObjectLoadStream(claimsFile);
+				Map<String, List<Map<String, Object>>> savesMap = (Map<String, List<Map<String, Object>>>) stream
+						.readObject();
+				claims = new HashMap<String, List<LotteryClaim>>();
+
+				for (String player : savesMap.keySet()) {
+					List<Map<String, Object>> saves = savesMap.get(player);
+					List<LotteryClaim> claims = new ArrayList<LotteryClaim>();
+					this.claims.put(player, claims);
+
+					for (Map<String, Object> save : saves) {
+						LotteryClaim claim = LotteryClaim.deserialize(save);
+						claims.add(claim);
+					}
+
 				}
 
+			} catch (Exception ex) {
+				claims = new HashMap<String, List<LotteryClaim>>();
 			}
-
-		} catch (Exception ex) {
-			claims = new HashMap<String, List<LotteryClaim>>();
+			oldClaimsFile.delete();
 		}
 
-		try {
-			ObjectLoadStream stream = new ObjectLoadStream(winnersFile);
-			Object store = stream.readObject();
-			winners = (store != null) ? ((List<String>) (store))
-					: new ArrayList<String>();
-		} catch (Exception ex) {
-			winners = new ArrayList<String>();
+		else {
+			loadClaims();
+		}
+
+		if (oldWinnersFile.exists()) {
+
+			try {
+				ObjectLoadStream stream = new ObjectLoadStream(winnersFile);
+				Object store = stream.readObject();
+				winners = (store != null) ? ((List<String>) (store))
+						: new ArrayList<String>();
+			} catch (Exception ex) {
+				winners = new ArrayList<String>();
+			}
+			oldWinnersFile.delete();
+		}
+
+		else {
+			loadWinners();
 		}
 
 		if (this.isEnabled()) {
@@ -173,28 +203,90 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 
 	}
 
-	public void callTasks() {
-		long delayAutoMessenger = MINUTE * SERVER_SECOND
-				* config.getReminderMessageTime();
-		scheduler.scheduleSyncRepeatingTask(this, this, delayAutoMessenger,
-				delayAutoMessenger);
-		long delayUpdate = MINUTE * SERVER_SECOND * config.getUpdateDelay();
-		scheduler.scheduleSyncRepeatingTask(this, new Runnable() {
-			public void run() {
-				String currentVersion = updateCheck(checkVersion);
-				if (!currentVersion.endsWith(checkVersion)) {
-					info(String
-							.format("there is a new version of %s: %s (you are running v%s)",
-									getName(), currentVersion, checkVersion));
-				}
+	private void callTasks() {
+		if (config.shouldReminderMessageEnable()) {
+			long delayAutoMessenger = MINUTE * SERVER_SECOND
+					* config.getReminderMessageTime();
+			reminderId = scheduler.scheduleSyncRepeatingTask(this, this,
+					delayAutoMessenger, delayAutoMessenger);
+			reminderMessageEnabled = true;
+		}
+		if(updateId == -1) {
+			long delayUpdate = MINUTE * SERVER_SECOND * config.getUpdateDelay();
+			updateId = scheduler.scheduleSyncRepeatingTask(this, new Runnable() {
+				public void run() {
+					String currentVersion = updateCheck(checkVersion);
+					if (!currentVersion.endsWith(checkVersion)) {
+						info(String
+								.format("there is a new version of %s: %s (you are running v%s)",
+										getName(), currentVersion, checkVersion));
+					}
 
-			}
-		}, 0, delayUpdate);
+				}
+			}, 0, delayUpdate);
+		}
 		scheduler.scheduleSyncDelayedTask(this, new Runnable() {
 			public void run() {
 				manager.start();
 			}
 		});
+	}
+
+	private void loadClaims() {
+		claims = new HashMap<String, List<LotteryClaim>>();
+		ConfigurationSection config = claimsConfig
+				.getConfigurationSection("claims");
+		if (config == null) {
+			return;
+		}
+		for (String player : config.getKeys(false)) {
+			List<LotteryClaim> claims = new ArrayList<LotteryClaim>();
+			ConfigurationSection playerSection = config
+					.getConfigurationSection(player);
+			for (String str : playerSection.getKeys(false)) {
+				LotteryClaim claim = LotteryClaim.load(playerSection
+						.getConfigurationSection(str));
+				claims.add(claim);
+			}
+			this.claims.put(player, claims);
+		}
+	}
+
+	private void loadWinners() {
+		winners = winnersConfig.getStringList("winners");
+		if (winners == null) {
+			winners = new ArrayList<String>();
+		}
+	}
+
+	private void saveClaims() {
+		ConfigurationSection config = claimsConfig.createSection("claims");
+		for (String player : claims.keySet()) {
+			List<LotteryClaim> list = claims.get(player);
+			ConfigurationSection playerSection = config.createSection(player);
+			int cntr = 1;
+			for (LotteryClaim claim : list) {
+				ConfigurationSection claimSection = playerSection
+						.createSection("claim" + (cntr++));
+				claim.save(claimSection);
+			}
+		}
+		try {
+			claimsConfig.save(claimsFile);
+			info("claims saved.");
+		} catch (Exception ex) {
+			severe("failed to save claims.");
+		}
+	}
+
+	private void saveWinners() {
+		winnersConfig.set("winners", winners);
+		try {
+			winnersConfig.save(winnersFile);
+			info("winners saved.");
+		} catch (Exception ex) {
+			severe("failed to winners.");
+		}
 	}
 
 	public void abort() {
@@ -203,48 +295,32 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 	}
 
 	public void reload() {
-	    reloadConfig();
-	    config.loadConfig();
+		reloadConfig();
+		config.loadConfig();
 		manager.reloadLotteries();
+		if (!reminderMessageEnabled) {
+			long delayAutoMessenger = MINUTE * SERVER_SECOND
+					* config.getReminderMessageTime();
+			reminderId = scheduler.scheduleSyncRepeatingTask(this, this,
+					delayAutoMessenger, delayAutoMessenger);
+			reminderMessageEnabled = true;
+		}
+
+		else {
+
+			if (!config.shouldReminderMessageEnable()) {
+				scheduler.cancelTask(reminderId);
+			}
+
+		}
+
 	}
 
 	public void onDisable() {
 		scheduler.cancelTasks(this);
 		manager.saveLotteries();
-
-		try {
-			ObjectSaveStream stream = new ObjectSaveStream(claimsFile);
-			Map<String, List<Map<String, Object>>> savesMap = new HashMap<String, List<Map<String, Object>>>();
-
-			for (String player : claims.keySet()) {
-				List<LotteryClaim> claims = this.claims.get(player);
-				if (claims.isEmpty()) {
-					continue;
-				}
-				List<Map<String, Object>> claimMaps = new ArrayList<Map<String, Object>>();
-
-				for (LotteryClaim claim : claims) {
-					claimMaps.add(claim.serialize());
-				}
-				savesMap.put(player, claimMaps);
-			}
-
-			stream.writeObject(savesMap);
-			stream.close();
-			info("lottery claims saved.");
-		} catch (Exception ex) {
-			severe("failed to save lottery claims.");
-		}
-
-		try {
-			ObjectSaveStream stream = new ObjectSaveStream(winnersFile);
-			stream.writeObject(winners);
-			stream.close();
-			info("winners saved.");
-		} catch (Exception ex) {
-			severe("failed to save winners.");
-		}
-
+		saveClaims();
+		saveWinners();
 		info("disabled.");
 	}
 
@@ -359,15 +435,15 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 				&& loc1.getBlockY() == loc2.getBlockY()
 				&& loc1.getBlockZ() == loc2.getBlockZ();
 	}
-	
+
 	public OfflinePlayer getOfflinePlayer(String name) {
-		
-		for(OfflinePlayer player : getServer().getOfflinePlayers()) {
-			
-			if(player.getName().equalsIgnoreCase(name)) {
+
+		for (OfflinePlayer player : getServer().getOfflinePlayers()) {
+
+			if (player.getName().equalsIgnoreCase(name)) {
 				return player;
 			}
-			
+
 		}
 		return getServer().getOfflinePlayer(name);
 	}
@@ -390,7 +466,9 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 
 	public boolean hasPermission(Player player, String permission) {
 		return perm.has(player.getWorld().getName(), player.getName(),
-				permission) || !config.isPermsEnabled();
+				permission)
+				|| !config.isPermsEnabled()
+				|| (player.isOp() && config.shouldDefaultToOp());
 	}
 
 	public void addBuyer(String player, String lottery) {
@@ -428,8 +506,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 			} catch (Exception ex) {
 				warning("exception caught in addWinner(String winner).");
 			}
-		}
-		else {
+		} else {
 			try {
 				PrintWriter writer = new PrintWriter(winnersLogFile);
 				writer.println(winner);
@@ -488,7 +565,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 
 		help(player, "---------------------------------------------------");
 	}
-	
+
 	protected void listWinners(CommandSender sender) {
 		sender.sendMessage("---------------------------------------------------");
 		sender.sendMessage(logName + " - winners");
@@ -680,6 +757,10 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 
 	public LotteryManager getLotteryManager() {
 		return manager;
+	}
+
+	public static final Plugin getInstance() {
+		return instance;
 	}
 
 }

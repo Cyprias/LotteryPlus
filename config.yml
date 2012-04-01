@@ -1,20 +1,22 @@
 properties:
   permissions: false
-  update-delay: 60
+  permissions-op: false
   time-after-draws: 5
+  reminder-message-time: 1
+  reminder-message-enable: true
   reminder-message: '&eDont forget to check your servers lotteries. Type /lottery
     list to list lotteries.'
-  reminder-message-time: 30
   sign-message: '&eName: <name><newline>&eTicket Cost: <ticketcost>'
+  update-delay: 60
 signs:
   normal:
     line1: <name>
     line2: <time>
     line3: <reward>
   drawing:
-    line1: <name>
-    line2: Drawing...
     line3: <reward>
+    line2: Drawing...
+    line1: <name>
   over:
     line1: <name>
     line2: Over

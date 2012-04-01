@@ -350,6 +350,10 @@ public class Lottery implements TimeConstants, Runnable {
 	public boolean isDrawing() {
 		return drawing;
 	}
+	
+	public boolean isRepeating() {
+		return repeat;
+	}
 
 	public void setDrawing(boolean flag) {
 		this.drawing = flag;
@@ -397,6 +401,9 @@ public class Lottery implements TimeConstants, Runnable {
 	public void updateSigns() {
 
 		for (Sign sign : signs) {
+			if(!sign.getBlock().getChunk().isLoaded()) {
+				continue;
+			}
 			formatter.format(sign);
 			sign.update(true);
 		}
@@ -419,15 +426,25 @@ public class Lottery implements TimeConstants, Runnable {
 	public boolean hasPlayerBoughtTicket(String player) {
 		return players.contains(player);
 	}
-
+	
+	public double playerReward(String player, int tickets) {
+		return playerBought(player, tickets, false);
+	}
+	
 	public double playerBought(String player, int tickets) {
+		return playerBought(player, tickets, true);
+	}
+
+	private double playerBought(String player, int tickets, boolean flag) {
 		double value = 0.0;
 		for (int cntr = 0; cntr < tickets; cntr++) {
 			players.add(player);
-			value += (isItemOnly()) ? 0 : ticketCost
-					- (ticketCost * (ticketTax / 100));
-			pot += (isItemOnly()) ? 0 : ticketCost
-					- (ticketCost * (ticketTax / 100));
+			if(flag) {
+				value += (isItemOnly()) ? 0 : ticketCost
+						- (ticketCost * (ticketTax / 100));
+				pot += (isItemOnly()) ? 0 : ticketCost
+						- (ticketCost * (ticketTax / 100));
+			}
 		}
 		if (cooldown > 0) {
 			timer.setTime(timer.getTime() + cooldown);
@@ -443,7 +460,7 @@ public class Lottery implements TimeConstants, Runnable {
 
 			if (player != null) {
 				plugin.send(player, String.format(
-						"%s's pot has been raised to %s", name, formatPot()));
+						"%s's pot has been raised to %s", this.name, formatPot()));
 			}
 
 		}

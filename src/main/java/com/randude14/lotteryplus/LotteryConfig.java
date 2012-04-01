@@ -24,6 +24,8 @@ public class LotteryConfig implements FormatOptions {
 	private static final long DEFAULT_UPDATE_TIME = 60L;
 	private static final long DEFAULT_TIME_AFTER_DRAWS = 5L;
 	private static final boolean DEFAULT_PERMISSIONS = false;
+	private static final boolean DEFAULT_PERMISSIONS_DEFAULTTOOP = false;
+	private static final boolean DEFAULT_REMINDER_MESSAGE_TIME_ENABLE = false;
 	private static final int DEFAULT_MAX_PLAYERS = 10;
 	private static final int DEFAULT_MIN_PLAYERS = 2;
 	private static final double DEFAULT_POT = 100.00;
@@ -31,6 +33,8 @@ public class LotteryConfig implements FormatOptions {
 	private static final long DEFAULT_TIME = 24;
 	private static final int DEFAULT_MAXTICKETS = 10;
 	private boolean PERMISSIONS;
+	private boolean PERMISSIONS_DEFAULTTOOP;
+	private boolean REMINDER_MESSAGE_ENABLE;
 	private long MESSAGE_TIME;
 	private long UPDATE_TIME;
 	private long TIME_AFTER_DRAWS;
@@ -55,13 +59,21 @@ public class LotteryConfig implements FormatOptions {
 					.getConfigurationSection("properties");
 			PERMISSIONS = properties.getBoolean("permissions",
 					DEFAULT_PERMISSIONS);
+			PERMISSIONS_DEFAULTTOOP = properties.getBoolean("permissions-op",
+					DEFAULT_PERMISSIONS_DEFAULTTOOP);
 			MESSAGE_TIME = properties.getLong("reminder-message-time",
 					DEFAULT_REMINDER_MESSAGE_TIME);
 			REMINDER_MESSAGE = properties.getString("reminder-message",
 					REMINDER_MESSAGE);
-			UPDATE_TIME = properties.getLong("update-delay", DEFAULT_UPDATE_TIME);
-			SIGN_BUY_MESSAGE = properties.getString("sign-message", DEFAULT_BUY_SIGN_MESSAGE);
-			TIME_AFTER_DRAWS = properties.getLong("time-after-draws", DEFAULT_TIME_AFTER_DRAWS);
+			REMINDER_MESSAGE_ENABLE = properties.getBoolean(
+					"reminder-message-enable",
+					DEFAULT_REMINDER_MESSAGE_TIME_ENABLE);
+			UPDATE_TIME = properties.getLong("update-delay",
+					DEFAULT_UPDATE_TIME);
+			SIGN_BUY_MESSAGE = properties.getString("sign-message",
+					DEFAULT_BUY_SIGN_MESSAGE);
+			TIME_AFTER_DRAWS = properties.getLong("time-after-draws",
+					DEFAULT_TIME_AFTER_DRAWS);
 			REMINDER_MESSAGE = plugin.replaceColors(REMINDER_MESSAGE);
 			ConfigurationSection signSection = plugin.getConfig()
 					.getConfigurationSection("signs");
@@ -77,9 +89,12 @@ public class LotteryConfig implements FormatOptions {
 					DEFAULT_SIGN_DRAWING_TWO);
 			drawingArgs[2] = signSection.getString("drawing.line3",
 					DEFAULT_SIGN_DRAWING_THREE);
-			endArgs[0] = signSection.getString("over.line1", DEFAULT_SIGN_END_ONE);
-			endArgs[1] = signSection.getString("over.line2", DEFAULT_SIGN_END_TWO);
-			endArgs[2] = signSection.getString("over.line3", DEFAULT_SIGN_END_THREE);
+			endArgs[0] = signSection.getString("over.line1",
+					DEFAULT_SIGN_END_ONE);
+			endArgs[1] = signSection.getString("over.line2",
+					DEFAULT_SIGN_END_TWO);
+			endArgs[2] = signSection.getString("over.line3",
+					DEFAULT_SIGN_END_THREE);
 			plugin.info("config loaded.");
 		} catch (Exception ex) {
 			plugin.warning("error occured while loading config.");
@@ -93,8 +108,11 @@ public class LotteryConfig implements FormatOptions {
 	public void writeConfig() {
 		Map<String, Object> propertyMap = new HashMap<String, Object>();
 		propertyMap.put("permissions", Boolean.FALSE);
+		propertyMap.put("permissions-op", Boolean.FALSE);
 		propertyMap.put("reminder-message-time", DEFAULT_REMINDER_MESSAGE_TIME);
 		propertyMap.put("reminder-message", DEFAULT_REMINDER_MESSAGE);
+		propertyMap.put("reminder-message-enable",
+				DEFAULT_REMINDER_MESSAGE_TIME_ENABLE);
 		propertyMap.put("update-delay", DEFAULT_UPDATE_TIME);
 		propertyMap.put("sign-message", DEFAULT_BUY_SIGN_MESSAGE);
 		propertyMap.put("time-after-draws", DEFAULT_TIME_AFTER_DRAWS);
@@ -108,7 +126,7 @@ public class LotteryConfig implements FormatOptions {
 		signMap.put("over.line1", DEFAULT_SIGN_END_ONE);
 		signMap.put("over.line2", DEFAULT_SIGN_END_TWO);
 		signMap.put("over.line3", DEFAULT_SIGN_END_THREE);
-		
+
 		FileConfiguration config = plugin.getConfig();
 		config.createSection("properties", propertyMap);
 		config.createSection("signs", signMap);
@@ -120,6 +138,10 @@ public class LotteryConfig implements FormatOptions {
 
 	public boolean isPermsEnabled() {
 		return PERMISSIONS;
+	}
+
+	public boolean shouldDefaultToOp() {
+		return PERMISSIONS_DEFAULTTOOP;
 	}
 
 	public int getDefaultMaxPlayers() {
@@ -145,15 +167,15 @@ public class LotteryConfig implements FormatOptions {
 	public long getDefaultTime() {
 		return DEFAULT_TIME;
 	}
-	
+
 	public String[] getNormalArgs() {
 		return normalArgs;
 	}
-	
+
 	public String[] getDrawingArgs() {
 		return drawingArgs;
 	}
-	
+
 	public String[] getEndArgs() {
 		return endArgs;
 	}
@@ -166,14 +188,18 @@ public class LotteryConfig implements FormatOptions {
 		return REMINDER_MESSAGE;
 	}
 	
+	public boolean shouldReminderMessageEnable() {
+		return REMINDER_MESSAGE_ENABLE;
+	}
+
 	public long getUpdateDelay() {
 		return UPDATE_TIME;
 	}
-	
+
 	public long getTimeAfterDraws() {
 		return TIME_AFTER_DRAWS;
 	}
-	
+
 	public String getBuyMessage() {
 		return SIGN_BUY_MESSAGE;
 	}
