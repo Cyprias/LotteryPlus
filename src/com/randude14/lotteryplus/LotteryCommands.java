@@ -197,12 +197,17 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 
 				econ.withdrawPlayer(name, price);
 				double added = lottery.playerBought(name, tickets);
-				plugin.send(player, "Player has bought " + ChatColor.GOLD
-						+ tickets + ChatColor.YELLOW
-						+ " ticket(s) for the lottery " + ChatColor.GOLD
-						+ lottery + ChatColor.YELLOW + " for " + ChatColor.GOLD
-						+ plugin.format(price) + ". " + plugin.format(added)
-						+ ChatColor.YELLOW + " has been added to the pot.");
+				String message = plugin.replaceColors(Config.getBuyMessage()
+						.replace("<player>", name)
+						.replace("<ticket>", String.format("%d", tickets))
+						.replace("<lottery>", lottery.getName()));
+				if (Config.shouldBroadcastBuy())
+					plugin.broadcast(message);
+				else
+					plugin.send(player, message);
+				plugin.send(player, String.format(
+						"$%,.2f has been added to %s.", added,
+						lottery.getName()));
 			}
 
 		}
@@ -428,7 +433,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 				plugin.getScheduler().scheduleSyncDelayedTask(plugin, lottery,
 						SERVER_SECOND * 3);
 			}
-			
+
 			else {
 				plugin.error(player, "/lottery draw <lottery name>");
 			}
@@ -503,7 +508,8 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 
 				Lottery lottery = manager.searchLottery(args[1]);
 				if (lottery == null) {
-					sender.sendMessage(String.format("%s does not exist!", args[1]));
+					sender.sendMessage(String.format("%s does not exist!",
+							args[1]));
 					return;
 				}
 

@@ -1,23 +1,48 @@
 properties:
-  permissions: false
-  permissions-op: false
-  time-after-draws: 5
-  reminder-message-time: 1
-  reminder-message-enable: true
-  reminder-message: '&eDont forget to check your servers lotteries. Type /lottery
-    list to list lotteries.'
-  sign-message: '&eName: <name><newline>&eTicket Cost: <ticketcost>'
-  update-delay: 60
+
+    #whether permissions should be enabled
+    permissions: false
+    
+    #whether permission should default to ops or not
+    permissions-op: false
+    
+    #time between lottery drawings
+    time-after-draws: 5
+    
+    #should broadcast the buy message out
+    should-broadcast-buy: true
+    
+    #time between reminder messages
+    reminder-message-time: 30
+    
+    #whether to enable the reminder message or not
+    reminder-message-enable: true
+    
+    #used to remind players of the lotteries
+    reminder-message: '&eDont forget to check your servers lotteries. Type /lottery list to list lotteries.'
+    
+    #used when a player attempts to buy a ticket from a sign
+    sign-message: '&eName: <name><newline>&eTicket Cost: <ticketcost>'
+    
+    #used when a player buys a ticket
+    buy-message: '&e<player> has bought <ticket> tickets for <lottery>'
+    
+    #used when a player logs. can also have multiple lotteries if desired -> 'MAIN, MAIN2, MAIN3.', ect...
+    main-lotteries: 'MAIN'
+    
+    #delay between update checks
+    update-delay: 60
+    
 signs:
-  normal:
-    line1: <name>
-    line2: <time>
-    line3: <reward>
-  drawing:
-    line3: <reward>
-    line2: Drawing...
-    line1: <name>
-  over:
-    line1: <name>
-    line2: Over
-    line3: <winner>
+    normal:
+        line1: <name>
+        line2: <time>
+        line3: <reward>
+    drawing:
+        line3: <reward>
+        line2: Drawing...
+        line1: <name>
+    over:
+        line1: <name>
+        line2: Over
+        line3: <winner>

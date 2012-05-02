@@ -21,7 +21,7 @@ import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
-import com.randude14.lotteryplus.LotteryConfig;
+import com.randude14.lotteryplus.Config;
 import com.randude14.lotteryplus.LotteryManager;
 import com.randude14.lotteryplus.Plugin;
 import com.randude14.lotteryplus.util.SignFormatter;
@@ -30,11 +30,11 @@ import com.randude14.lotteryplus.util.TimeConstants;
 public class Lottery implements TimeConstants, Runnable {
 	private final Plugin plugin;
 	private final LotteryTimer timer;
-	private final SignFormatter formatter;
 	private final List<ItemStack> itemRewards;
 	private final List<Sign> signs;
 	private final List<String> players;
 	private final String name;
+	private SignFormatter formatter;
 	private String winner;
 	private long cooldown;
 	private double ticketCost;
@@ -56,25 +56,22 @@ public class Lottery implements TimeConstants, Runnable {
 		this.players = new ArrayList<String>();
 		this.name = name;
 		this.timer = new LotteryTimer(this);
-		LotteryConfig config = plugin.getLotteryConfig();
-		this.formatter = new LotterySignFormatter(this, config.getNormalArgs(),
-				config.getDrawingArgs(), config.getEndArgs());
+		this.formatter = Config.getLotterySignFormatter(this);
 		drawing = false;
 	}
 
 	public void readSavedData(ConfigurationSection section) {
-		LotteryConfig config = plugin.getLotteryConfig();
 		this.repeat = section.getBoolean("repeat", Boolean.TRUE);
 		this.ticketCost = section.getDouble("ticketcost",
-				config.getDefaultTicketCost());
-		this.pot = section.getDouble("pot", config.getDefaultPot());
+				Config.getDefaultTicketCost());
+		this.pot = section.getDouble("pot", Config.getDefaultPot());
 		this.itemOnly = section.getBoolean("item-only", Boolean.FALSE);
 		this.maxTickets = section.getInt("max-tickets",
-				config.getDefaultMaxTickets());
+				Config.getDefaultMaxTickets());
 		this.maxPlayers = section.getInt("max-players",
-				config.getDefaultMaxPlayers());
+				Config.getDefaultMaxPlayers());
 		this.minPlayers = section.getInt("min-players",
-				config.getDefaultMinPlayers());
+				Config.getDefaultMinPlayers());
 		this.winner = section.getString("past-winner");
 		this.ticketTax = section.getDouble("ticket-tax", 0.0);
 		this.potTax = section.getDouble("pot-tax", 0.0);
@@ -178,19 +175,18 @@ public class Lottery implements TimeConstants, Runnable {
 	public void loadData(ConfigurationSection section) {
 		players.clear();
 		itemRewards.clear();
-		LotteryConfig config = plugin.getLotteryConfig();
 		this.repeat = section.getBoolean("repeat", Boolean.TRUE);
 		this.ticketCost = section.getDouble("ticketcost",
-				config.getDefaultTicketCost());
-		this.pot = section.getDouble("pot", config.getDefaultPot());
+				Config.getDefaultTicketCost());
+		this.pot = section.getDouble("pot", Config.getDefaultPot());
 		this.itemOnly = section.getBoolean("item-only", Boolean.FALSE);
 		this.maxTickets = section.getInt("max-tickets",
-				config.getDefaultMaxTickets());
+				Config.getDefaultMaxTickets());
 		this.maxPlayers = section.getInt("max-players",
-				config.getDefaultMaxPlayers());
+				Config.getDefaultMaxPlayers());
 		this.minPlayers = section.getInt("min-players",
-				config.getDefaultMinPlayers());
-		double d = section.getDouble("time", config.getDefaultTime());
+				Config.getDefaultMinPlayers());
+		double d = section.getDouble("time", Config.getDefaultTime());
 		long time = (long) Math.floor(d * HOUR);
 		this.timer.setTime(time);
 		this.timer.setResetTime(time);
@@ -321,6 +317,10 @@ public class Lottery implements TimeConstants, Runnable {
 				.getConfigurationSection("lotteries")
 				.getConfigurationSection(name);
 		return section;
+	}
+	
+	public void newSignFormatter() {
+		formatter = Config.getLotterySignFormatter(this);
 	}
 
 	public boolean isItemOnly() {

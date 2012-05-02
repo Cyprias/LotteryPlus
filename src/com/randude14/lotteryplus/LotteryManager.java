@@ -30,9 +30,8 @@ public class LotteryManager extends Thread implements TimeConstants {
 		lotteries = new ArrayList<Lottery>();
 		reloadConfig();
 		if (!lotteryFile.exists()) {
-			plugin.warning(lotteryFile.getName()
-					+ " was not found. writing defaults.");
-			writeConfig();
+			plugin.info("'lotteries.yml' was not found. Writing defaults.");
+			saveDefaultConfig();
 		}
 		reloading = false;
 	}
@@ -69,7 +68,7 @@ public class LotteryManager extends Thread implements TimeConstants {
 				}
 
 				if (lottery.isDrawing()) {
-					long delay = plugin.getLotteryConfig().getTimeAfterDraws() + 3;
+					long delay = Config.getTimeAfterDraws() + 3;
 					while (delay > 0) {
 						pause(1000L);
 						delay--;
@@ -115,10 +114,8 @@ public class LotteryManager extends Thread implements TimeConstants {
 
 	}
 
-	private void writeConfig() {
-		FileConfiguration config = getConfig();
-		config.createSection("lotteries");
-		saveConfig();
+	public void saveDefaultConfig() {
+		plugin.saveResource("lotteries.yml", false);
 	}
 
 	public void saveConfig() {
@@ -149,6 +146,7 @@ public class LotteryManager extends Thread implements TimeConstants {
 					.getConfigurationSection("lotteries");
 			ConfigurationSection saveSection = getConfig()
 					.getConfigurationSection("saves");
+			if(lotterySection == null) return;
 
 			for (String lotteryName : lotterySection.getKeys(false)) {
 				Lottery lottery = new Lottery(plugin, lotteryName);
@@ -224,6 +222,7 @@ public class LotteryManager extends Thread implements TimeConstants {
 		ConfigurationSection lotterySection = lotteriesSection
 				.getConfigurationSection(lottery.getName());
 		lottery.loadData(lotterySection);
+		lottery.newSignFormatter();
 		if (!flag) {
 			reloading = false;
 		}

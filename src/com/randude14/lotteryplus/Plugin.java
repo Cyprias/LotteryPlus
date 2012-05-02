@@ -48,17 +48,17 @@ import com.randude14.lotteryplus.io.ObjectLoadStream;
 import com.randude14.lotteryplus.listeners.SignListener;
 import com.randude14.lotteryplus.lottery.Lottery;
 import com.randude14.lotteryplus.lottery.LotteryClaim;
+import com.randude14.lotteryplus.util.FormatOptions;
 import com.randude14.lotteryplus.util.TimeConstants;
 
 public class Plugin extends JavaPlugin implements Listener, Runnable,
-		TimeConstants {
+		TimeConstants, FormatOptions {
 	private static Plugin instance;
 	private static final String CMD_LOTTERY = "lottery";
 	private Map<String, List<LotteryClaim>> claims;
 	private Map<String, String> buyers;
 	private LotteryManager manager;
 	private List<String> winners;
-	private LotteryConfig config;
 	private SignListener signListener;
 	private FileConfiguration claimsConfig;
 	private FileConfiguration winnersConfig;
@@ -89,7 +89,6 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		scheduler = getServer().getScheduler();
 		logName = "[" + this + "]";
 		random = new Random(getName().hashCode());
-		config = new LotteryConfig(this);
 		manager = new LotteryManager(this);
 		claimsFile = new File(getDataFolder(), "claims.yml");
 		winnersFile = new File(getDataFolder(), "winners.yml");
@@ -101,8 +100,8 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		signListener = new SignListener(this);
 
 		if (!configFile.exists()) {
-			info("config file not found. attempting to write default config...");
-			config.writeConfig();
+			info("Config file not found. Writing defaults.");
+			saveDefaultConfig();
 		}
 
 		LotteryExtras extras = new LotteryExtras(this);
@@ -133,14 +132,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 			return;
 		}
 
-		config.loadConfig();
 		manager.loadLotteries();
-		if (manager.getLotteries().isEmpty()) {
-			severe("no lotteries have been loaded.");
-			abort();
-			return;
-		}
-
 		claimsConfig = YamlConfiguration.loadConfiguration(claimsFile);
 		winnersConfig = YamlConfiguration.loadConfiguration(winnersFile);
 		File oldClaimsFile = new File(getDataFolder(), "claims");
@@ -192,6 +184,12 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		else {
 			loadWinners();
 		}
+		
+		if (manager.getLotteries().isEmpty()) {
+			severe("no lotteries have been loaded.");
+			abort();
+			return;
+		}
 
 		if (this.isEnabled()) {
 			info("enabled.");
@@ -204,26 +202,28 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 	}
 
 	private void callTasks() {
-		if (config.shouldReminderMessageEnable()) {
+		if (Config.shouldReminderMessageEnable()) {
 			long delayAutoMessenger = MINUTE * SERVER_SECOND
-					* config.getReminderMessageTime();
+					* Config.getReminderMessageTime();
 			reminderId = scheduler.scheduleSyncRepeatingTask(this, this,
 					delayAutoMessenger, delayAutoMessenger);
 			reminderMessageEnabled = true;
 		}
-		if(updateId == -1) {
-			long delayUpdate = MINUTE * SERVER_SECOND * config.getUpdateDelay();
-			updateId = scheduler.scheduleSyncRepeatingTask(this, new Runnable() {
-				public void run() {
-					String currentVersion = updateCheck(checkVersion);
-					if (!currentVersion.endsWith(checkVersion)) {
-						info(String
-								.format("there is a new version of %s: %s (you are running v%s)",
-										getName(), currentVersion, checkVersion));
-					}
+		if (updateId == -1) {
+			long delayUpdate = MINUTE * SERVER_SECOND * Config.getUpdateDelay();
+			updateId = scheduler.scheduleSyncRepeatingTask(this,
+					new Runnable() {
+						public void run() {
+							String currentVersion = updateCheck(checkVersion);
+							if (!currentVersion.endsWith(checkVersion)) {
+								info(String
+										.format("there is a new version of %s: %s (you are running v%s)",
+												getName(), currentVersion,
+												checkVersion));
+							}
 
-				}
-			}, 0, delayUpdate);
+						}
+					}, 0, delayUpdate);
 		}
 		scheduler.scheduleSyncDelayedTask(this, new Runnable() {
 			public void run() {
@@ -291,16 +291,15 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 
 	public void abort() {
 		severe("An error has ocurred. shutting down...");
-		setEnabled(false);
+		getServer().getPluginManager().disablePlugin(this);
 	}
 
 	public void reload() {
 		reloadConfig();
-		config.loadConfig();
 		manager.reloadLotteries();
 		if (!reminderMessageEnabled) {
 			long delayAutoMessenger = MINUTE * SERVER_SECOND
-					* config.getReminderMessageTime();
+					* Config.getReminderMessageTime();
 			reminderId = scheduler.scheduleSyncRepeatingTask(this, this,
 					delayAutoMessenger, delayAutoMessenger);
 			reminderMessageEnabled = true;
@@ -308,7 +307,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 
 		else {
 
-			if (!config.shouldReminderMessageEnable()) {
+			if (!Config.shouldReminderMessageEnable()) {
 				scheduler.cancelTask(reminderId);
 			}
 
@@ -382,6 +381,10 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 	public String format(double value) {
 		return econ.format(value);
 	}
+	
+	public String getPrefix() {
+		return String.format("[%s] - ", getName());
+	}
 
 	public void broadcast(String message, String permission) {
 
@@ -402,12 +405,15 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		for (Player player : getServer().getOnlinePlayers()) {
 			send(player, message);
 		}
-
+		message = ChatColor.stripColor(message);
 		infoRaw(message);
 	}
 
 	public void run() {
-		broadcast(config.getReminderMessage(), "lottery.list");
+		for (String mess : Config.getReminderMessage().split(FORMAT_NEWLINE)) {
+			broadcast(mess);
+		}
+
 	}
 
 	public String replaceColors(String message) {
@@ -436,24 +442,24 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 				&& loc1.getBlockZ() == loc2.getBlockZ();
 	}
 
-	//uses binary search
+	// uses binary search
 	public OfflinePlayer getOfflinePlayer(String name) {
 		OfflinePlayer[] players = getServer().getOfflinePlayers();
 		int left = 0;
-		int right = players.length-1;
-		while(left <= right) {
-			int mid = (left + right)/2;
+		int right = players.length - 1;
+		while (left <= right) {
+			int mid = (left + right) / 2;
 			int result = players[mid].getName().compareToIgnoreCase(name);
-			if(result == 0)
+			if (result == 0)
 				return players[mid];
-			else if(result < 0)
-				left = mid+1;
-			else 
-				right = mid-1;
-		}		
-		
-		//if it doesn't exist, then have the ,
-		//server create the object instead of returning null
+			else if (result < 0)
+				left = mid + 1;
+			else
+				right = mid - 1;
+		}
+
+		// if it doesn't exist, then have the ,
+		// server create the object instead of returning null
 		return getServer().getOfflinePlayer(name);
 	}
 
@@ -473,12 +479,12 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		send(player, mess, ChatColor.RED);
 	}
 
-	//check to see if a player has permission
+	// check to see if a player has permission
 	public boolean hasPermission(Player player, String permission) {
 		return perm.has(player.getWorld().getName(), player.getName(),
 				permission)
-				|| !config.isPermsEnabled()
-				|| (player.isOp() && config.shouldDefaultToOp());
+				|| !Config.isPermsEnabled()
+				|| (player.isOp() && Config.shouldDefaultToOp());
 	}
 
 	public void addBuyer(String player, String lottery) {
@@ -499,7 +505,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		while (winners.size() > 5) {
 			winners.remove(0);
 		}
-		//if winners.log exists, then log onto the existing logs
+		// if winners.log exists, then log onto the existing logs
 		if (winnersLogFile.exists()) {
 			try {
 				List<String> logs = new ArrayList<String>();
@@ -517,7 +523,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 			} catch (Exception ex) {
 				warning("exception caught in addWinner(String winner).");
 			}
-		//if winners.log exists, then create file and print the log
+			// if winners.log exists, then create file and print the log
 		} else {
 			try {
 				PrintWriter writer = new PrintWriter(winnersLogFile);
@@ -648,10 +654,17 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 
 		econ.withdrawPlayer(name, cost);
 		double added = lottery.playerBought(name, tickets);
-		send(player, "Player has bought " + tickets + " ticket(s) for "
-				+ ChatColor.GOLD.toString() + format(cost));
-		send(player, ChatColor.GOLD + format(added) + ChatColor.YELLOW
-				+ " has been added to the pot.");
+		String message = replaceColors(Config.getBuyMessage()
+				.replace("<player>", name)
+				.replace("<ticket>", String.format("%d", tickets))
+				.replace("<lottery>", lottery.getName()));
+		if (Config.shouldBroadcastBuy())
+			broadcast(message);
+		else
+			send(player, message);
+		send(player, String.format(
+				"$%,.2f has been added to %s.", added,
+				lottery.getName()));
 		send(player, "Transaction completed");
 		help(player, "---------------------------------------------------");
 	}
@@ -719,6 +732,22 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 					"You have a lottery reward(s) to claim. Type '/lottery claim' to claim your reward.");
 		}
 
+		String[] names = Config.getMainLotteries();
+		info(java.util.Arrays.toString(names));
+		for (String lotteryName : names) {
+			Lottery lottery = manager.searchLottery(lotteryName);
+			if (lottery == null)
+				continue;
+			String format;
+			if(lottery.isRunByTime())
+				format = "Lottery %s ends in %s - WW:DD:HH:MM:SS";								
+			else
+				format = "Lottery %s has %s tickets left until drawing occurs.";
+			send(player,
+					String.format(getPrefix() + format,
+							lottery.getName(), lottery.formatTimer()));
+		}
+
 	}
 
 	public String updateCheck(String currentVersion) {
@@ -749,7 +778,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 	public boolean isSign(Block block) {
 		return block.getState() instanceof Sign;
 	}
-	
+
 	public boolean isSign(Location loc) {
 		return isSign(loc.getBlock());
 	}
@@ -764,10 +793,6 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 
 	public Random getRandom() {
 		return random;
-	}
-
-	public LotteryConfig getLotteryConfig() {
-		return config;
 	}
 
 	public LotteryManager getLotteryManager() {

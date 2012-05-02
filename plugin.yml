@@ -2,7 +2,7 @@ name: LotteryPlus
 main: com.randude14.lotteryplus.Plugin
 depend: [Vault]
 authors: [Randude14]
-version: 0.6.2
+version: 0.6.4
 commands: 
     lottery: 
       description: basic command

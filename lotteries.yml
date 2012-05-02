@@ -1,22 +1,9 @@
 lotteries:
-    Daily:
-        pot: 10000.00
-        ticketcost: 1000.00
-        time: 2
-        item-only: true        
-        max-tickets: 10
-        min-players: 1
-        max-players: 10000
-        item-reward:
-            DIAMOND_HELMET:
-                stack-size: 1
-                PROTECTION_EXPLOSIONS: 4
-            DIAMOND_CHESTPLATE:
-                stack-size: 1
-                PROTECTION_EXPLOSIONS: 4
-            DIAMOND_LEGGINGS:
-                stack-size: 1
-                PROTECTION_EXPLOSIONS: 4
-            DIAMOND_BOOTS:
-                stack-size: 1
-                PROTECTION_EXPLOSIONS: 4   
+#   MAIN:
+#       pot: 10000.00 - starting pot
+#       time: 3 - time between drawings (x hours)
+#       ticket-cost: 100.00 - cost of a ticket   
+#       repeat: true - whether lottery should repeat
+#       max-tickets: 10 - max tickets a player can buy
+#       min-players: 2 - min players for lottery to draw
+#       max-players: 10 - max players that can be in the lottery

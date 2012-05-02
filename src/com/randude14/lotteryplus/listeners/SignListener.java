@@ -14,6 +14,7 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 
+import com.randude14.lotteryplus.Config;
 import com.randude14.lotteryplus.LotteryManager;
 import com.randude14.lotteryplus.Plugin;
 import com.randude14.lotteryplus.lottery.Lottery;
@@ -166,7 +167,7 @@ public class SignListener implements Listener, FormatOptions {
 	}
 
 	private String[] getBuyMessage(Lottery lottery) {
-		String buyMessage = plugin.getLotteryConfig().getBuyMessage();
+		String buyMessage = Config.getBuyMessage();
 			buyMessage = plugin.replaceColors(buyMessage)
 					.replace(FORMAT_REWARD, lottery.formatReward())
 					.replace(FORMAT_TIME, lottery.formatTimer())
