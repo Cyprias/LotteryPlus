@@ -74,7 +74,7 @@ public class Config {
 	
 	public static String formatMoney(double amount) {
 		String format = plugin.getConfig().getString("properties.money-format");
-		return format.replace("<money>", String.format("%,.2f"));
+		return format.replace("<money>", String.format("%,.2f", amount));
 	}
 	
 	public static String[] getMainLotteries() {
