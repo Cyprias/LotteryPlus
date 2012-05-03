@@ -72,6 +72,11 @@ public class Config {
 		return plugin.getConfig().getString("properties.sign-message");
 	}
 	
+	public static String formatMoney(double amount) {
+		String format = plugin.getConfig().getString("properties.money-format");
+		return format.replace("<money>", String.format("%,.2f"));
+	}
+	
 	public static String[] getMainLotteries() {
 		return plugin.getConfig().getString("properties.main-lotteries").split("[, ]+");
 	}

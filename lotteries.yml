@@ -1,4 +1,6 @@
 lotteries:
+
+#LOTTERY EXAMPLE:
 #   MAIN:
 #       pot: 10000.00 - starting pot
 #       time: 3 - time between drawings (x hours)

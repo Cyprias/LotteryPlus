@@ -33,6 +33,9 @@ properties:
     #delay between update checks
     update-delay: 60
     
+    #used to format money through messages and signs
+    money-format: '$<money>'
+    
 signs:
     normal:
         line1: <name>

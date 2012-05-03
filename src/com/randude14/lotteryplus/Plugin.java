@@ -378,10 +378,6 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		logger.log(Level.SEVERE, info);
 	}
 
-	public String format(double value) {
-		return econ.format(value);
-	}
-	
 	public String getPrefix() {
 		return String.format("[%s] - ", getName());
 	}
@@ -521,9 +517,9 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 				writer.flush();
 				writer.close();
 			} catch (Exception ex) {
-				warning("exception caught in addWinner(String winner).");
+				warning("exception caught in addWinner().");
 			}
-			// if winners.log exists, then create file and print the log
+			// if winners.log does not exists, then create file and print the log
 		} else {
 			try {
 				PrintWriter writer = new PrintWriter(winnersLogFile);
@@ -531,7 +527,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 				writer.flush();
 				writer.close();
 			} catch (Exception ex) {
-				warning("exception caught in addWinner(String winner).");
+				warning("exception caught in addWinner().");
 			}
 		}
 	}
@@ -663,7 +659,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		else
 			send(player, message);
 		send(player, String.format(
-				"$%,.2f has been added to %s.", added,
+				"%s has been added to %s.", Config.formatMoney(added),
 				lottery.getName()));
 		send(player, "Transaction completed");
 		help(player, "---------------------------------------------------");
@@ -703,6 +699,10 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 					buyers.remove(name);
 					event.setCancelled(true);
 					return;
+				}
+				
+				if(tickets <= 0) {
+					error(player, String.format("Tickets cannot be negative."));
 				}
 
 				playerBuyFromLottery(player, lottery, tickets);

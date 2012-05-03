@@ -175,6 +175,10 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 					return;
 				}
 
+				if (tickets <= 0) {
+					plugin.error(player, "Tickets cannot be negative.");
+				}
+
 				int ticketsBought = lottery.getTicketsBought(name);
 				int maxTickets = lottery.getMaxTickets();
 
@@ -205,9 +209,10 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 					plugin.broadcast(message);
 				else
 					plugin.send(player, message);
-				plugin.send(player, String.format(
-						"$%,.2f has been added to %s.", added,
-						lottery.getName()));
+				plugin.send(
+						player,
+						String.format("%s has been added to %s.",
+								Config.formatMoney(added), lottery.getName()));
 			}
 
 		}
@@ -325,7 +330,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 
 				econ.withdrawPlayer(name, add);
 				lottery.addToPot(add);
-				plugin.send(player, "Player has added " + plugin.format(add)
+				plugin.send(player, "Player has added " + Config.formatMoney(add)
 						+ " to the pot of lottery " + lottery);
 			}
 
@@ -367,7 +372,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 
 				if (pot != -1) {
 					econ.depositPlayer(name, pot);
-					plugin.send(player, "Awarded player " + plugin.format(pot)
+					plugin.send(player, "Awarded player " + Config.formatMoney(pot)
 							+ " from lottery " + lottery);
 				}
 
@@ -605,7 +610,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 				}
 
 				lottery.addToPot(add);
-				sender.sendMessage("You have added " + plugin.format(add)
+				sender.sendMessage("You have added " + Config.formatMoney(add)
 						+ " to the pot of lottery " + lottery);
 			}
 

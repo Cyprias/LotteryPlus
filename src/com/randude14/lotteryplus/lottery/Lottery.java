@@ -569,11 +569,11 @@ public class Lottery implements TimeConstants, Runnable {
 	}
 
 	public String formatPot() {
-		return plugin.format(pot);
+		return Config.formatMoney(pot);
 	}
 
 	public String formatTicketCost() {
-		return plugin.format(ticketCost);
+		return Config.formatMoney(ticketCost);
 	}
 
 	public String formatTicketTax() {
@@ -688,7 +688,7 @@ public class Lottery implements TimeConstants, Runnable {
 		}
 
 		else {
-			message.append(ChatColor.GOLD + plugin.format(winnings));
+			message.append(ChatColor.GOLD + Config.formatMoney(winnings));
 
 			if (!itemRewards.isEmpty()) {
 
@@ -730,7 +730,7 @@ public class Lottery implements TimeConstants, Runnable {
 		}
 
 		else {
-			logWinner.append(", Winnings - [" + plugin.format(winnings) + "]");
+			logWinner.append(", Winnings - [" + Config.formatMoney(winnings) + "]");
 
 			if (!itemRewards.isEmpty()) {
 
