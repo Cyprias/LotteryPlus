@@ -703,6 +703,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 				
 				if(tickets <= 0) {
 					error(player, String.format("Tickets cannot be negative."));
+					return;
 				}
 
 				playerBuyFromLottery(player, lottery, tickets);

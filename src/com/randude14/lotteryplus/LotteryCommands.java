@@ -177,6 +177,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 
 				if (tickets <= 0) {
 					plugin.error(player, "Tickets cannot be negative.");
+					return;
 				}
 
 				int ticketsBought = lottery.getTicketsBought(name);
