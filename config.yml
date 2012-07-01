@@ -25,10 +25,11 @@ properties:
     sign-message: '&eName: <name><newline>&eTicket Cost: <ticketcost>'
     
     #used when a player buys a ticket
-    buy-message: '&e<player> has bought <ticket> tickets for <lottery>'
+    buy-message: '&e<player> has bought <ticket> ticket(s) for <lottery>'
     
     #used when a player logs. can also have multiple lotteries if desired -> 'MAIN, MAIN2, MAIN3.', ect...
-    main-lotteries: 'MAIN'
+    #if you don't want there to be any lotteries set this as ''
+    main-lotteries: ''
     
     #delay between update checks
     update-delay: 60

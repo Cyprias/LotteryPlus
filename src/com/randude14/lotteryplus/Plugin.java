@@ -90,13 +90,14 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		logName = "[" + this + "]";
 		random = new Random(getName().hashCode());
 		manager = new LotteryManager(this);
-		claimsFile = new File(getDataFolder(), "claims.yml");
-		winnersFile = new File(getDataFolder(), "winners.yml");
-		configFile = new File(getDataFolder(), "config.yml");
-		listColors = new File(getDataFolder(), "colors.yml");
-		listMaterials = new File(getDataFolder(), "items.yml");
-		winnersLogFile = new File(getDataFolder(), "winners.log");
-		listEnchantments = new File(getDataFolder(), "enchantments.yml");
+		File dataFolder = getDataFolder();
+		claimsFile = new File(dataFolder, "claims.yml");
+		winnersFile = new File(dataFolder, "winners.yml");
+		configFile = new File(dataFolder, "config.yml");
+		listColors = new File(dataFolder, "colors.yml");
+		listMaterials = new File(dataFolder, "items.yml");
+		winnersLogFile = new File(dataFolder, "winners.log");
+		listEnchantments = new File(dataFolder, "enchantments.yml");
 		signListener = new SignListener(this);
 
 		if (!configFile.exists()) {
@@ -135,13 +136,13 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		manager.loadLotteries();
 		claimsConfig = YamlConfiguration.loadConfiguration(claimsFile);
 		winnersConfig = YamlConfiguration.loadConfiguration(winnersFile);
-		File oldClaimsFile = new File(getDataFolder(), "claims");
-		File oldWinnersFile = new File(getDataFolder(), "winners");
+		File oldClaimsFile = new File(dataFolder, "claims");
+		File oldWinnersFile = new File(dataFolder, "winners");
 
 		if (oldClaimsFile.exists()) {
 
 			try {
-				ObjectLoadStream stream = new ObjectLoadStream(claimsFile);
+				ObjectLoadStream stream = new ObjectLoadStream(oldClaimsFile);
 				Map<String, List<Map<String, Object>>> savesMap = (Map<String, List<Map<String, Object>>>) stream
 						.readObject();
 				claims = new HashMap<String, List<LotteryClaim>>();
@@ -171,7 +172,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		if (oldWinnersFile.exists()) {
 
 			try {
-				ObjectLoadStream stream = new ObjectLoadStream(winnersFile);
+				ObjectLoadStream stream = new ObjectLoadStream(oldWinnersFile);
 				Object store = stream.readObject();
 				winners = (store != null) ? ((List<String>) (store))
 						: new ArrayList<String>();
@@ -184,7 +185,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		else {
 			loadWinners();
 		}
-		
+
 		if (manager.getLotteries().isEmpty()) {
 			severe("no lotteries have been loaded.");
 			abort();
@@ -407,7 +408,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 
 	public void run() {
 		for (String mess : Config.getReminderMessage().split(FORMAT_NEWLINE)) {
-			broadcast(mess);
+			broadcast(replaceColors(mess));
 		}
 
 	}
@@ -519,7 +520,8 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 			} catch (Exception ex) {
 				warning("exception caught in addWinner().");
 			}
-			// if winners.log does not exists, then create file and print the log
+			// if winners.log does not exists, then create file and print the
+			// log
 		} else {
 			try {
 				PrintWriter writer = new PrintWriter(winnersLogFile);
@@ -658,9 +660,9 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 			broadcast(message);
 		else
 			send(player, message);
-		send(player, String.format(
-				"%s has been added to %s.", Config.formatMoney(added),
-				lottery.getName()));
+		send(player,
+				String.format("%s has been added to %s.",
+						Config.formatMoney(added), lottery.getName()));
 		send(player, "Transaction completed");
 		help(player, "---------------------------------------------------");
 	}
@@ -684,7 +686,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		String message = event.getMessage();
 
 		if (buyers.containsKey(name)) {
-			Lottery lottery = manager.searchLottery(buyers.get(name));
+			Lottery lottery = manager.searchLottery(buyers.remove(name));
 
 			if (lottery != null) {
 				int tickets = 0;
@@ -696,12 +698,11 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 					send(player, "Transaction cancelled");
 					help(player,
 							"---------------------------------------------------");
-					buyers.remove(name);
 					event.setCancelled(true);
 					return;
 				}
-				
-				if(tickets <= 0) {
+
+				if (tickets <= 0) {
 					error(player, String.format("Tickets cannot be negative."));
 					return;
 				}
@@ -716,7 +717,6 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 						"---------------------------------------------------");
 			}
 
-			buyers.remove(name);
 			event.setCancelled(true);
 		}
 
@@ -734,19 +734,20 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		}
 
 		String[] names = Config.getMainLotteries();
-		info(java.util.Arrays.toString(names));
+		if (names.length == 0 || names[0].equals("")) {
+			return;
+		}
 		for (String lotteryName : names) {
 			Lottery lottery = manager.searchLottery(lotteryName);
 			if (lottery == null)
 				continue;
 			String format;
-			if(lottery.isRunByTime())
-				format = "Lottery %s ends in %s - WW:DD:HH:MM:SS";								
+			if (lottery.isRunByTime())
+				format = "Lottery %s ends in %s - WW:DD:HH:MM:SS";
 			else
 				format = "Lottery %s has %s tickets left until drawing occurs.";
-			send(player,
-					String.format(getPrefix() + format,
-							lottery.getName(), lottery.formatTimer()));
+			send(player, String.format(getPrefix() + format, lottery.getName(),
+					lottery.formatTimer()));
 		}
 
 	}

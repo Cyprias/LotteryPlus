@@ -336,7 +336,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 			}
 
 			else {
-				plugin.help(player, "/lottery addtopot <lottery name>");
+				plugin.help(player, "/lottery addtopot <lottery name> <money>");
 			}
 
 		}

@@ -88,7 +88,7 @@ public class Config {
 		FileConfiguration config = plugin.getConfig();
 		for(int cntr = 0;cntr < 3;cntr++) {
 			normalArgs[cntr] = config.getString("signs.normal.line" + (cntr+1));
-			drawArgs[cntr] = config.getString("signs.draw.line" + (cntr+1));
+			drawArgs[cntr] = config.getString("signs.drawing.line" + (cntr+1));
 			endArgs[cntr] = config.getString("signs.end.line" + (cntr+1));
 		}
 		return new LotterySignFormatter(lottery, normalArgs, drawArgs, endArgs);
