@@ -478,10 +478,13 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 
 	// check to see if a player has permission
 	public boolean hasPermission(Player player, String permission) {
-		return perm.has(player.getWorld().getName(), player.getName(),
-				permission)
-				|| !Config.isPermsEnabled()
-				|| (player.isOp() && Config.shouldDefaultToOp());
+		if(perm.has(player, permission))
+			return true;
+		if(!Config.isPermsEnabled())
+			return true;
+		if(player.isOp() && Config.shouldDefaultToOp())
+			return true;
+		return false;
 	}
 
 	public void addBuyer(String player, String lottery) {
@@ -687,6 +690,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 
 		if (buyers.containsKey(name)) {
 			Lottery lottery = manager.searchLottery(buyers.remove(name));
+			event.setCancelled(true);
 
 			if (lottery != null) {
 				int tickets = 0;
@@ -717,7 +721,6 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 						"---------------------------------------------------");
 			}
 
-			event.setCancelled(true);
 		}
 
 	}

@@ -98,6 +98,7 @@ public class LotteryCommands implements CommandExecutor, TimeConstants {
 
 			if (!plugin.hasPermission(player, "lottery.info")) {
 				plugin.error(player, "You do not have permission.");
+				return;
 			}
 
 			if (args.length == 2) {

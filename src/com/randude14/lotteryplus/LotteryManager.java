@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -57,9 +58,9 @@ public class LotteryManager extends Thread implements TimeConstants {
 				pause(10L);
 			}
 			pause(1000L);
-			for (int cntr = 0;cntr < lotteries.size();cntr++) {
+			for (int cntr = 0; cntr < lotteries.size(); cntr++) {
 				Lottery lottery = lotteries.get(cntr);
-				if(!lottery.isRunByTime()) {
+				if (!lottery.isRunByTime()) {
 					continue;
 				}
 				try {
@@ -75,8 +76,8 @@ public class LotteryManager extends Thread implements TimeConstants {
 					}
 
 				}
-				
-				if(!nameExists(lottery.getName())) {
+
+				if (!nameExists(lottery.getName())) {
 					cntr--;
 				}
 
@@ -146,7 +147,8 @@ public class LotteryManager extends Thread implements TimeConstants {
 					.getConfigurationSection("lotteries");
 			ConfigurationSection saveSection = getConfig()
 					.getConfigurationSection("saves");
-			if(lotterySection == null) return;
+			if (lotterySection == null)
+				return;
 
 			for (String lotteryName : lotterySection.getKeys(false)) {
 				Lottery lottery = new Lottery(plugin, lotteryName);
@@ -185,16 +187,26 @@ public class LotteryManager extends Thread implements TimeConstants {
 		try {
 			ConfigurationSection lotterySection = getConfig()
 					.getConfigurationSection("lotteries");
-
-			for (String lotteryName : lotterySection.getKeys(false)) {
-				if (nameExists(lotteryName)) {
-					reloadLottery(lotteryName, true);
-				} else {
-					Lottery lottery = new Lottery(plugin, lotteryName);
-					lotteries.add(lottery);
-					reloadLottery(lotteryName, true);
-					lottery.start();
+			Set<String> keys = lotterySection.getKeys(false);
+			for(int cntr = 0;cntr < lotteries.size();cntr++) {
+				Lottery lottery = lotteries.get(cntr);
+				boolean found = false;
+				for(String key : keys) {
+					if(key.equalsIgnoreCase(lottery.getName()))
+						found = true;
 				}
+				if(!found)
+					lotteries.remove(cntr);
+			}
+
+			for (String lotteryName : keys) {
+				if (nameExists(lotteryName)) {
+					continue;
+				}
+				Lottery lottery = new Lottery(plugin, lotteryName);
+				lotteries.add(lottery);
+				reloadLottery(lotteryName, true);
+				lottery.start();
 			}
 
 			plugin.info("lotteries loaded.");
