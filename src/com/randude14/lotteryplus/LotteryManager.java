@@ -17,7 +17,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import com.randude14.lotteryplus.lottery.Lottery;
 import com.randude14.lotteryplus.util.TimeConstants;
 
-public class LotteryManager extends Thread implements TimeConstants {
+public class LotteryManager implements TimeConstants, Runnable {
 
 	private final Plugin plugin;
 	private List<Lottery> lotteries;
@@ -26,7 +26,6 @@ public class LotteryManager extends Thread implements TimeConstants {
 	private boolean reloading;
 
 	protected LotteryManager(final Plugin plugin) {
-		super("Lottery Manager");
 		this.plugin = plugin;
 		lotteries = new ArrayList<Lottery>();
 		reloadConfig();
@@ -52,39 +51,34 @@ public class LotteryManager extends Thread implements TimeConstants {
 
 	public void run() {
 
-		while (plugin.isEnabled()) {
-
-			while (reloading) {
-				pause(10L);
+		while (reloading) {
+			pause(10L);
+		}
+		pause(1000L);
+		for (int cntr = 0; cntr < lotteries.size(); cntr++) {
+			Lottery lottery = lotteries.get(cntr);
+			if (!lottery.isRunByTime()) {
+				continue;
 			}
-			pause(1000L);
-			for (int cntr = 0; cntr < lotteries.size(); cntr++) {
-				Lottery lottery = lotteries.get(cntr);
-				if (!lottery.isRunByTime()) {
-					continue;
-				}
-				try {
-					lottery.countdown();
-				} catch (Exception ex) {
-				}
+			try {
+				lottery.countdown();
+			} catch (Exception ex) {
+			}
 
-				if (lottery.isDrawing()) {
-					long delay = Config.getTimeAfterDraws() + 3;
-					while (delay > 0) {
-						pause(1000L);
-						delay--;
-					}
-
+			if (lottery.isDrawing()) {
+				long delay = Config.getTimeAfterDraws() + 3;
+				while (delay > 0) {
+					pause(1000L);
+					delay--;
 				}
 
-				if (!nameExists(lottery.getName())) {
-					cntr--;
-				}
+			}
 
+			if (!nameExists(lottery.getName())) {
+				cntr--;
 			}
 
 		}
-
 	}
 
 	private void pause(long milliseconds) {
@@ -188,14 +182,14 @@ public class LotteryManager extends Thread implements TimeConstants {
 			ConfigurationSection lotterySection = getConfig()
 					.getConfigurationSection("lotteries");
 			Set<String> keys = lotterySection.getKeys(false);
-			for(int cntr = 0;cntr < lotteries.size();cntr++) {
+			for (int cntr = 0; cntr < lotteries.size(); cntr++) {
 				Lottery lottery = lotteries.get(cntr);
 				boolean found = false;
-				for(String key : keys) {
-					if(key.equalsIgnoreCase(lottery.getName()))
+				for (String key : keys) {
+					if (key.equalsIgnoreCase(lottery.getName()))
 						found = true;
 				}
-				if(!found)
+				if (!found)
 					lotteries.remove(cntr);
 			}
 

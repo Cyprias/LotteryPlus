@@ -226,11 +226,7 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 						}
 					}, 0, delayUpdate);
 		}
-		scheduler.scheduleSyncDelayedTask(this, new Runnable() {
-			public void run() {
-				manager.start();
-			}
-		});
+		scheduler.scheduleAsyncRepeatingTask(this, manager, 20, 20);
 	}
 
 	private void loadClaims() {

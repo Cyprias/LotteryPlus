@@ -1,8 +1,5 @@
 properties:
 
-    #whether permissions should be enabled
-    permissions: false
-    
     #whether permission should default to ops or not
     permissions-op: false
     
@@ -31,7 +28,7 @@ properties:
     #if you don't want there to be any lotteries set this as ''
     main-lotteries: ''
     
-    #delay between update checks
+    #delay between update checks, x minutes
     update-delay: 60
     
     #used to format money through messages and signs

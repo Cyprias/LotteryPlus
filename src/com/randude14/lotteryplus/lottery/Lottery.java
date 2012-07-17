@@ -62,7 +62,7 @@ public class Lottery implements TimeConstants, Runnable {
 
 	public void readSavedData(ConfigurationSection section) {
 		this.repeat = section.getBoolean("repeat", Boolean.TRUE);
-		this.ticketCost = section.getDouble("ticketcost",
+		this.ticketCost = section.getDouble("ticket-cost",
 				Config.getDefaultTicketCost());
 		this.pot = section.getDouble("pot", Config.getDefaultPot());
 		this.itemOnly = section.getBoolean("item-only", Boolean.FALSE);
