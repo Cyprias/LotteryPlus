@@ -1,311 +1,171 @@
 package com.randude14.lotteryplus;
 
 import java.io.File;
-import java.io.PrintWriter;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Random;
-import java.util.Scanner;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import net.milkbowl.vault.economy.Economy;
-import net.milkbowl.vault.permission.Permission;
 
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
 import org.bukkit.command.CommandSender;
-import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerChatEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitScheduler;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import com.randude14.lotteryplus.io.ObjectLoadStream;
+import com.randude14.lotteryplus.command.*;
+import com.randude14.lotteryplus.configuration.Config;
+import com.randude14.lotteryplus.listeners.PlayerListener;
 import com.randude14.lotteryplus.listeners.SignListener;
 import com.randude14.lotteryplus.lottery.Lottery;
-import com.randude14.lotteryplus.lottery.LotteryClaim;
-import com.randude14.lotteryplus.util.FormatOptions;
+import com.randude14.lotteryplus.tasks.ReminderMessageTask;
+import com.randude14.lotteryplus.util.CustomYaml;
 import com.randude14.lotteryplus.util.TimeConstants;
 
-public class Plugin extends JavaPlugin implements Listener, Runnable,
-		TimeConstants, FormatOptions {
-	private static Plugin instance;
-	private static final String CMD_LOTTERY = "lottery";
-	private Map<String, List<LotteryClaim>> claims;
-	private Map<String, String> buyers;
-	private LotteryManager manager;
-	private List<String> winners;
-	private SignListener signListener;
-	private FileConfiguration claimsConfig;
-	private FileConfiguration winnersConfig;
-	private Logger logger;
-	private BukkitScheduler scheduler;
-	private String logName;
+public class Plugin extends JavaPlugin implements Listener, TimeConstants {
+	private static Plugin instance = null;
+	private static final Map<String, String> buyers = new HashMap<String, String>();
+	private static net.milkbowl.vault.permission.Permission perm;
+	private static Economy econ;
+	public static final String CMD_LOTTERY = "lottery";
 	private String checkVersion;
 	private File configFile;
-	private File listMaterials;
-	private File listEnchantments;
-	private File listColors;
-	private File claimsFile;
-	private File winnersFile;
-	private File winnersLogFile;
-	private Random random;
-	private Permission perm;
-	private Economy econ;
-	private boolean reminderMessageEnabled;
-	private int reminderId;
+	private static boolean reminderMessageEnabled;
+	private static int reminderId;
 	private int updateId = -1;
 
-	@SuppressWarnings("unchecked")
 	public void onEnable() {
 		instance = this;
-		buyers = new HashMap<String, String>();
-		winners = new ArrayList<String>();
-		logger = Logger.getLogger("Minecraft");
-		scheduler = getServer().getScheduler();
-		logName = "[" + this + "]";
-		random = new Random(getName().hashCode());
-		manager = new LotteryManager(this);
 		File dataFolder = getDataFolder();
-		claimsFile = new File(dataFolder, "claims.yml");
-		winnersFile = new File(dataFolder, "winners.yml");
+		dataFolder.mkdirs();
 		configFile = new File(dataFolder, "config.yml");
-		listColors = new File(dataFolder, "colors.yml");
-		listMaterials = new File(dataFolder, "items.yml");
-		winnersLogFile = new File(dataFolder, "winners.log");
-		listEnchantments = new File(dataFolder, "enchantments.yml");
-		signListener = new SignListener(this);
 
 		if (!configFile.exists()) {
-			info("Config file not found. Writing defaults.");
+			Logger.info("Config file not found. Writing defaults.");
 			saveDefaultConfig();
 		}
 
-		LotteryExtras extras = new LotteryExtras(this);
-
-		if (!listMaterials.exists()) {
-			extras.writeMaterialConfig();
-		}
-
-		if (!listEnchantments.exists()) {
-			extras.writeEnchantmentConfig();
-		}
-
-		if (!listColors.exists()) {
-			extras.writeColorConfig();
-		}
-
 		if (!setupEconomy()) {
-			warning("economy system not found! Lottery+ uses 'Vault' to plug into other economies.");
-			warning("download is at 'http://dev.bukkit.org/server-mods/vault/'");
-			abort();
+			Logger.warning("economy system not found! Lottery+ uses 'Vault' to plug into other economies.");
+			Logger.warning("download is at 'http://dev.bukkit.org/server-mods/vault/'");
 			return;
 		}
 
 		if (!setupPermission()) {
-			warning("permission system not found! Lottery+ uses 'Vault' to plug into other permissions.");
-			warning("download is at 'http://dev.bukkit.org/server-mods/vault/'");
-			abort();
+			Logger.warning("permission system not found! Lottery+ uses 'Vault' to plug into other permissions.");
+			Logger.warning("download is at 'http://dev.bukkit.org/server-mods/vault/'");
 			return;
 		}
+		
 
-		manager.loadLotteries();
-		claimsConfig = YamlConfiguration.loadConfiguration(claimsFile);
-		winnersConfig = YamlConfiguration.loadConfiguration(winnersFile);
-		File oldClaimsFile = new File(dataFolder, "claims");
-		File oldWinnersFile = new File(dataFolder, "winners");
-
-		if (oldClaimsFile.exists()) {
-
-			try {
-				ObjectLoadStream stream = new ObjectLoadStream(oldClaimsFile);
-				Map<String, List<Map<String, Object>>> savesMap = (Map<String, List<Map<String, Object>>>) stream
-						.readObject();
-				claims = new HashMap<String, List<LotteryClaim>>();
-
-				for (String player : savesMap.keySet()) {
-					List<Map<String, Object>> saves = savesMap.get(player);
-					List<LotteryClaim> claims = new ArrayList<LotteryClaim>();
-					this.claims.put(player, claims);
-
-					for (Map<String, Object> save : saves) {
-						LotteryClaim claim = LotteryClaim.deserialize(save);
-						claims.add(claim);
-					}
-
-				}
-
-			} catch (Exception ex) {
-				claims = new HashMap<String, List<LotteryClaim>>();
-			}
-			oldClaimsFile.delete();
-		}
-
-		else {
-			loadClaims();
-		}
-
-		if (oldWinnersFile.exists()) {
-
-			try {
-				ObjectLoadStream stream = new ObjectLoadStream(oldWinnersFile);
-				Object store = stream.readObject();
-				winners = (store != null) ? ((List<String>) (store))
-						: new ArrayList<String>();
-			} catch (Exception ex) {
-				winners = new ArrayList<String>();
-			}
-			oldWinnersFile.delete();
-		}
-
-		else {
-			loadWinners();
-		}
-
-		if (manager.getLotteries().isEmpty()) {
-			severe("no lotteries have been loaded.");
-			abort();
-			return;
-		}
+		ClaimManager.loadClaims();
+		WinnersManager.loadWinners();
+		LotteryManager.loadLotteries();
 
 		if (this.isEnabled()) {
-			info("enabled.");
-			registerListeners(this, signListener);
+			loadPermissions();
+			saveExtras();
+			registerListeners(this, new PlayerListener(), new SignListener());
 			checkVersion = getDescription().getVersion();
 			callTasks();
-			getCommand(CMD_LOTTERY).setExecutor(new LotteryCommands(this));
+			CommandManager cm = new CommandManager()
+			    .registerCommand("buy", new BuyCommand())
+				.registerCommand("draw", new DrawCommand());
+			//TODO add remaining commands
+			this.getCommand(CMD_LOTTERY).setExecutor(cm);
+			Logger.info("enabled.");
 		}
 
 	}
 
 	private void callTasks() {
-		if (Config.shouldReminderMessageEnable()) {
+		if (Config.getProperty(Config.REMINDER_ENABLE)) {
 			long delayAutoMessenger = MINUTE * SERVER_SECOND
-					* Config.getReminderMessageTime();
-			reminderId = scheduler.scheduleSyncRepeatingTask(this, this,
+					* Config.getProperty(Config.REMINDER_MESSAGE_TIME);
+			reminderId = scheduleSyncRepeatingTask(new ReminderMessageTask(),
 					delayAutoMessenger, delayAutoMessenger);
 			reminderMessageEnabled = true;
 		}
 		if (updateId == -1) {
-			long delayUpdate = MINUTE * SERVER_SECOND * Config.getUpdateDelay();
-			updateId = scheduler.scheduleSyncRepeatingTask(this,
+			long delayUpdate = MINUTE * SERVER_SECOND * Config.getProperty(Config.UPDATE_DELAY);
+			updateId = scheduleSyncRepeatingTask(
 					new Runnable() {
 						public void run() {
 							String currentVersion = updateCheck(checkVersion);
 							if (!currentVersion.endsWith(checkVersion)) {
-								info(String
-										.format("there is a new version of %s: %s (you are running v%s)",
-												getName(), currentVersion,
-												checkVersion));
+								Logger.info("there is a new version of %s: %s (you are running v%s)");
 							}
 
 						}
 					}, 0, delayUpdate);
 		}
-		scheduler.scheduleAsyncRepeatingTask(this, manager, 20, 20);
+		//TODO add save task
 	}
 
-	private void loadClaims() {
-		claims = new HashMap<String, List<LotteryClaim>>();
-		ConfigurationSection config = claimsConfig
-				.getConfigurationSection("claims");
-		if (config == null) {
-			return;
-		}
-		for (String player : config.getKeys(false)) {
-			List<LotteryClaim> claims = new ArrayList<LotteryClaim>();
-			ConfigurationSection playerSection = config
-					.getConfigurationSection(player);
-			for (String str : playerSection.getKeys(false)) {
-				LotteryClaim claim = LotteryClaim.load(playerSection
-						.getConfigurationSection(str));
-				claims.add(claim);
-			}
-			this.claims.put(player, claims);
+	private void loadPermissions() {
+		PluginManager pm = Bukkit.getPluginManager();
+		for (Permission permission : Permission.values()) {
+			permission.loadPermission(pm);
 		}
 	}
-
-	private void loadWinners() {
-		winners = winnersConfig.getStringList("winners");
-		if (winners == null) {
-			winners = new ArrayList<String>();
+	
+	private void saveExtras() {
+		CustomYaml enchants = new CustomYaml("enchantments.yml", false);
+		FileConfiguration enchantsConfig = enchants.getConfig();
+		for(Enchantment enchant : Enchantment.values()) {
+			enchantsConfig.set("enchantments." + enchant.getName(), String.format("%d-%d", enchant.getStartLevel(), enchant.getMaxLevel()));
 		}
+		enchants.saveConfig();
+		CustomYaml items = new CustomYaml("items.yml", false);
+		FileConfiguration itemsConfig = items.getConfig();
+		for(Material mat : Material.values()) {
+			itemsConfig.set("items." + mat.name(), mat.getId());
+		}
+		items.saveConfig();
+		CustomYaml colors = new CustomYaml("colors.yml", false);
+		FileConfiguration colorsConfig = colors.getConfig();
+		for(ChatColor color : ChatColor.values()) {
+			colorsConfig.set("colors." + color.name(), Character.toString(color.getChar()));
+		}
+		colors.saveConfig();
 	}
 
-	private void saveClaims() {
-		ConfigurationSection config = claimsConfig.createSection("claims");
-		for (String player : claims.keySet()) {
-			List<LotteryClaim> list = claims.get(player);
-			ConfigurationSection playerSection = config.createSection(player);
-			int cntr = 1;
-			for (LotteryClaim claim : list) {
-				ConfigurationSection claimSection = playerSection
-						.createSection("claim" + (cntr++));
-				claim.save(claimSection);
-			}
-		}
-		try {
-			claimsConfig.save(claimsFile);
-			info("claims saved.");
-		} catch (Exception ex) {
-			severe("failed to save claims.");
-		}
-	}
-
-	private void saveWinners() {
-		winnersConfig.set("winners", winners);
-		try {
-			winnersConfig.save(winnersFile);
-			info("winners saved.");
-		} catch (Exception ex) {
-			severe("failed to winners.");
-		}
-	}
-
-	public void abort() {
-		severe("An error has ocurred. shutting down...");
-		getServer().getPluginManager().disablePlugin(this);
-	}
-
-	public void reload() {
-		reloadConfig();
-		manager.reloadLotteries();
+	public static void reload() {
+		instance.reloadConfig();
 		if (!reminderMessageEnabled) {
 			long delayAutoMessenger = MINUTE * SERVER_SECOND
-					* Config.getReminderMessageTime();
-			reminderId = scheduler.scheduleSyncRepeatingTask(this, this,
+					* Config.getProperty(Config.REMINDER_MESSAGE_TIME);
+			reminderId = Plugin.scheduleSyncRepeatingTask(new ReminderMessageTask(), 
 					delayAutoMessenger, delayAutoMessenger);
 			reminderMessageEnabled = true;
 		}
 
 		else {
 
-			if (!Config.shouldReminderMessageEnable()) {
-				scheduler.cancelTask(reminderId);
+			if (!Config.getProperty(Config.REMINDER_ENABLE)) {
+				instance.getServer().getScheduler().cancelTask(reminderId);
 			}
 
 		}
@@ -313,11 +173,8 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 	}
 
 	public void onDisable() {
-		scheduler.cancelTasks(this);
-		manager.saveLotteries();
-		saveClaims();
-		saveWinners();
-		info("disabled.");
+		getServer().getScheduler().cancelTasks(this);
+		Logger.info("disabled.");
 	}
 
 	private void registerListeners(Listener... listeners) {
@@ -329,10 +186,10 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 
 	}
 
-	private boolean setupEconomy() {
-		RegisteredServiceProvider<Economy> economyProvider = getServer()
-				.getServicesManager().getRegistration(
-						net.milkbowl.vault.economy.Economy.class);
+	private static boolean setupEconomy() {
+		RegisteredServiceProvider<Economy> economyProvider = instance
+				.getServer().getServicesManager()
+				.getRegistration(net.milkbowl.vault.economy.Economy.class);
 		if (economyProvider != null) {
 			econ = economyProvider.getProvider();
 		}
@@ -340,10 +197,11 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		return (econ != null);
 	}
 
-	private boolean setupPermission() {
-		RegisteredServiceProvider<Permission> permissionProvider = getServer()
-				.getServicesManager().getRegistration(
-						net.milkbowl.vault.permission.Permission.class);
+	private static boolean setupPermission() {
+		RegisteredServiceProvider<net.milkbowl.vault.permission.Permission> permissionProvider = instance
+				.getServer()
+				.getServicesManager()
+				.getRegistration(net.milkbowl.vault.permission.Permission.class);
 		if (permissionProvider != null) {
 			perm = permissionProvider.getProvider();
 		}
@@ -351,93 +209,15 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		return (perm != null);
 	}
 
-	public void info(String info) {
-		logger.log(Level.INFO, logName + " - " + info);
-	}
-
-	public void warning(String info) {
-		logger.log(Level.WARNING, logName + " - " + info);
-	}
-
-	public void severe(String info) {
-		logger.log(Level.SEVERE, logName + " - " + info);
-	}
-
-	public void infoRaw(String info) {
-		logger.log(Level.INFO, info);
-	}
-
-	public void warningRaw(String info) {
-		logger.log(Level.WARNING, info);
-	}
-
-	public void severeRaw(String info) {
-		logger.log(Level.SEVERE, info);
-	}
-
-	public String getPrefix() {
-		return String.format("[%s] - ", getName());
-	}
-
-	public void broadcast(String message, String permission) {
-
-		for (Player player : getServer().getOnlinePlayers()) {
-
-			if (hasPermission(player, permission)) {
-				send(player, message);
-			}
-
-		}
-
-		message = ChatColor.stripColor(message);
-		infoRaw(message);
-	}
-
-	public void broadcast(String message) {
-
-		for (Player player : getServer().getOnlinePlayers()) {
-			send(player, message);
-		}
-		message = ChatColor.stripColor(message);
-		infoRaw(message);
-	}
-
-	public void run() {
-		for (String mess : Config.getReminderMessage().split(FORMAT_NEWLINE)) {
-			broadcast(replaceColors(mess));
-		}
-
-	}
-
-	public String replaceColors(String message) {
-		return message.replaceAll("&0", ChatColor.BLACK.toString())
-				.replaceAll("&1", ChatColor.DARK_BLUE.toString())
-				.replaceAll("&2", ChatColor.DARK_GREEN.toString())
-				.replaceAll("&3", ChatColor.DARK_AQUA.toString())
-				.replaceAll("&4", ChatColor.DARK_RED.toString())
-				.replaceAll("&5", ChatColor.DARK_PURPLE.toString())
-				.replaceAll("&6", ChatColor.GOLD.toString())
-				.replaceAll("&7", ChatColor.GRAY.toString())
-				.replaceAll("&8", ChatColor.DARK_GRAY.toString())
-				.replaceAll("&9", ChatColor.BLUE.toString())
-				.replaceAll("&a", ChatColor.GREEN.toString())
-				.replaceAll("&b", ChatColor.AQUA.toString())
-				.replaceAll("&c", ChatColor.RED.toString())
-				.replaceAll("&d", ChatColor.LIGHT_PURPLE.toString())
-				.replaceAll("&e", ChatColor.YELLOW.toString())
-				.replaceAll("&f", ChatColor.WHITE.toString())
-				.replaceAll("&k", ChatColor.MAGIC.toString());
-	}
-
-	public boolean locsInBounds(Location loc1, Location loc2) {
+	public static boolean locsInBounds(Location loc1, Location loc2) {
 		return loc1.getBlockX() == loc2.getBlockX()
 				&& loc1.getBlockY() == loc2.getBlockY()
 				&& loc1.getBlockZ() == loc2.getBlockZ();
 	}
 
 	// uses binary search
-	public OfflinePlayer getOfflinePlayer(String name) {
-		OfflinePlayer[] players = getServer().getOfflinePlayers();
+	public static OfflinePlayer getOfflinePlayer(String name) {
+		OfflinePlayer[] players = instance.getServer().getOfflinePlayers();
 		int left = 0;
 		int right = players.length - 1;
 		while (left <= right) {
@@ -451,307 +231,112 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 				right = mid - 1;
 		}
 
-		// if it doesn't exist, then have the ,
-		// server create the object instead of returning null
-		return getServer().getOfflinePlayer(name);
+		// if it doesn't exist, then have the server
+		// create the object instead of returning null
+		return instance.getServer().getOfflinePlayer(name);
 	}
 
-	public void send(Player player, String mess, ChatColor color) {
-		player.sendMessage(color + mess);
+	public static boolean checkPermission(CommandSender sender,
+			Permission permission) {
+		if (!hasPermission(sender, permission)) {
+			String mess = permission.getErrorMessage();
+			if (mess == null)
+				mess = Permission.DEFAULT_ERROR_MESSAGE;
+			ChatUtils.error(sender, mess);
+			return false;
+		}
+		return true;
 	}
 
-	public void send(Player player, String mess) {
-		send(player, mess, ChatColor.YELLOW);
-	}
-
-	public void help(Player player, String mess) {
-		send(player, mess, ChatColor.GOLD);
-	}
-
-	public void error(Player player, String mess) {
-		send(player, mess, ChatColor.RED);
-	}
-
-	// check to see if a player has permission
-	public boolean hasPermission(Player player, String permission) {
-		if(perm.has(player, permission))
+	public static boolean hasPermission(CommandSender sender,
+			Permission permission) {
+		if (sender instanceof ConsoleCommandSender)
 			return true;
-		if(!Config.isPermsEnabled())
-			return true;
-		if(player.isOp() && Config.shouldDefaultToOp())
-			return true;
-		return false;
+		Player p = (Player) sender;
+		String player = p.getName();
+		String world = p.getWorld().getName();
+		return permission.hasPermission(perm, player, world);
 	}
 
-	public void addBuyer(String player, String lottery) {
+	public static void addBuyer(String player, String lottery) {
 		buyers.put(player, lottery);
 	}
 
-	public boolean isBuyer(String name) {
+	public static boolean isBuyer(String name) {
 		return buyers.containsKey(name);
 	}
 
-	public void removeBuyer(String name) {
+	public static void removeBuyer(String name) {
 		buyers.remove(name);
 	}
 
-	public void addWinner(String winner) {
-		winners.add(winner);
-
-		while (winners.size() > 5) {
-			winners.remove(0);
-		}
-		// if winners.log exists, then log onto the existing logs
-		if (winnersLogFile.exists()) {
-			try {
-				List<String> logs = new ArrayList<String>();
-				Scanner scan = new Scanner(winnersLogFile);
-				while (scan.hasNextLine()) {
-					logs.add(scan.nextLine());
-				}
-				logs.add(winner);
-				PrintWriter writer = new PrintWriter(winnersLogFile);
-				for (String winnerLog : logs) {
-					writer.println(winnerLog);
-				}
-				writer.flush();
-				writer.close();
-			} catch (Exception ex) {
-				warning("exception caught in addWinner().");
-			}
-			// if winners.log does not exists, then create file and print the
-			// log
-		} else {
-			try {
-				PrintWriter writer = new PrintWriter(winnersLogFile);
-				writer.println(winner);
-				writer.flush();
-				writer.close();
-			} catch (Exception ex) {
-				warning("exception caught in addWinner().");
-			}
-		}
-	}
-
-	public void addClaim(String name, String lottery,
-			List<ItemStack> itemRewards) {
-		addClaim(name, lottery, itemRewards, -1);
-	}
-
-	public void addClaim(String name, String lottery, double pot) {
-		addClaim(name, lottery, null, pot);
-	}
-
-	public void addClaim(String name, String lottery,
-			List<ItemStack> itemRewards, double pot) {
-
-		if (!claims.containsKey(name)) {
-			claims.put(name, new ArrayList<LotteryClaim>());
-		}
-
-		claims.get(name).add(new LotteryClaim(lottery, itemRewards, pot));
-	}
-
-	public List<LotteryClaim> getClaims(String player) {
-		return claims.get(player);
-	}
-
-	protected void listWinners(Player player) {
-		if (!hasPermission(player, "lottery.winners")) {
-			error(player, "You do not have permission");
-			return;
-		}
-
-		help(player, "---------------------------------------------------");
-		send(player, logName + " - winners");
-		send(player, "");
-
-		if (winners.isEmpty()) {
-			error(player, "There are currently no winners");
-		}
-
-		else {
-
-			for (int cntr = 0; cntr < winners.size(); cntr++) {
-				send(player, (cntr + 1) + ". " + winners.get(cntr));
-			}
-
-		}
-
-		help(player, "---------------------------------------------------");
-	}
-
-	protected void listWinners(CommandSender sender) {
-		sender.sendMessage("---------------------------------------------------");
-		sender.sendMessage(logName + " - winners");
-		sender.sendMessage("");
-
-		if (winners.isEmpty()) {
-			sender.sendMessage("There are currently no winners");
-		}
-
-		else {
-
-			for (int cntr = 0; cntr < winners.size(); cntr++) {
-				sender.sendMessage((cntr + 1) + ". " + winners.get(cntr));
-			}
-
-		}
-
-		sender.sendMessage("---------------------------------------------------");
-	}
-
-	public void playerBuyFromLottery(Player player, Lottery lottery, int tickets) {
-		String name = player.getName();
-
-		if (!econ.hasAccount(name)) {
-			error(player, "You do not have an account");
-			send(player, "Transaction cancelled");
-			help(player, "---------------------------------------------------");
-			return;
-		}
-
-		int maxTickets = lottery.getMaxTickets();
-		int ticketsBought = lottery.getTicketsBought(name);
-
-		if (maxTickets != -1) {
-
-			if (ticketsBought >= maxTickets) {
-				error(player, "You have bought too many tickets.");
-				send(player, "Transaction cancelled");
-				help(player,
-						"---------------------------------------------------");
-				return;
-			}
-
-			if (ticketsBought + tickets > maxTickets) {
-				error(player, "You cannot buy this many tickets.");
-				send(player, "Transaction cancelled");
-				help(player,
-						"---------------------------------------------------");
-				return;
-			}
-
-		}
-
-		double cost = tickets * lottery.getTicketCost();
-		if (econ.getBalance(name) < cost) {
-			error(player, "You do not have enough money");
-			send(player, "Transaction cancelled");
-			help(player, "---------------------------------------------------");
-			return;
-		}
-
-		if (cost < 0) {
-			error(player, "Money must be positive");
-			send(player, "Transaction cancelled");
-			help(player, "---------------------------------------------------");
-			return;
-		}
-
-		econ.withdrawPlayer(name, cost);
-		double added = lottery.playerBought(name, tickets);
-		String message = replaceColors(Config.getBuyMessage()
-				.replace("<player>", name)
-				.replace("<ticket>", String.format("%d", tickets))
-				.replace("<lottery>", lottery.getName()));
-		if (Config.shouldBroadcastBuy())
-			broadcast(message);
-		else
-			send(player, message);
-		send(player,
-				String.format("%s has been added to %s.",
-						Config.formatMoney(added), lottery.getName()));
-		send(player, "Transaction completed");
-		help(player, "---------------------------------------------------");
-	}
-
 	@EventHandler(priority = EventPriority.MONITOR)
-	public void playerLogout(PlayerQuitEvent event) {
+	public void onPlayerQuit(PlayerQuitEvent event) {
 		String name = event.getPlayer().getName();
 		buyers.remove(name);
 	}
 
 	@EventHandler(priority = EventPriority.MONITOR)
-	public void playerKick(PlayerKickEvent event) {
+	public void onPlayerKick(PlayerKickEvent event) {
 		String name = event.getPlayer().getName();
 		buyers.remove(name);
 	}
 
 	@EventHandler
-	public void playerChat(PlayerChatEvent event) {
+	public void onPlayerChat(PlayerChatEvent event) {
 		Player player = event.getPlayer();
 		String name = player.getName();
-		String message = event.getMessage();
+		String chat = event.getMessage();
 
 		if (buyers.containsKey(name)) {
-			Lottery lottery = manager.searchLottery(buyers.remove(name));
+			String lotteryName = buyers.remove(name);
+			Lottery lottery = LotteryManager.getLottery(lotteryName);
 			event.setCancelled(true);
 
 			if (lottery != null) {
 				int tickets = 0;
 
 				try {
-					tickets = Integer.parseInt(message);
+					tickets = Integer.parseInt(chat);
 				} catch (Exception ex) {
-					error(player, "Invalid number");
-					send(player, "Transaction cancelled");
-					help(player,
-							"---------------------------------------------------");
+					ChatUtils.error(player, "Invalid number");
+					ChatUtils.send(player, "Transaction cancelled");
+					ChatUtils.send(player, ChatColor.YELLOW, "---------------------------------------------------");
 					event.setCancelled(true);
 					return;
 				}
 
 				if (tickets <= 0) {
-					error(player, String.format("Tickets cannot be negative."));
+					ChatUtils.error(player, String.format("Tickets cannot be negative."));
+					ChatUtils.error(player, "Transaction cancelled");
+					ChatUtils.send(player, ChatColor.YELLOW, "---------------------------------------------------");
 					return;
 				}
 
-				playerBuyFromLottery(player, lottery, tickets);
+				if(lottery.buyTickets(player, tickets)) {
+					ChatUtils.error(player, "Transaction completed");
+					ChatUtils.send(player, ChatColor.YELLOW, "---------------------------------------------------");
+					String message = Config.getProperty(Config.BUY_MESSAGE);
+					message.replace("<player>", name).replace("<tickets>", "" + tickets).replace("<lottery>", lottery.getName());
+					ChatUtils.broadcast(message);
+				}
+				else {
+					ChatUtils.error(player, "Transaction cancelled");
+					ChatUtils.send(player, ChatColor.YELLOW, "---------------------------------------------------");
+				}
 			}
 
 			else {
-				error(player, "Lottery has been removed for unknown reasons");
-				send(player, "Transaction cancelled");
-				help(player,
-						"---------------------------------------------------");
+				ChatUtils.error(player, "%s has been removed for unknown reasons", lotteryName);
+				ChatUtils.error(player, "Transaction cancelled");
+				ChatUtils.send(player, ChatColor.YELLOW, "---------------------------------------------------");
 			}
 
 		}
 
 	}
 
-	@EventHandler(priority = EventPriority.MONITOR)
-	public void playerJoin(PlayerJoinEvent event) {
-		Player player = event.getPlayer();
-		String name = player.getName();
-		List<LotteryClaim> claims = this.claims.get(name);
-
-		if (claims != null && !claims.isEmpty()) {
-			send(player,
-					"You have a lottery reward(s) to claim. Type '/lottery claim' to claim your reward.");
-		}
-
-		String[] names = Config.getMainLotteries();
-		if (names.length == 0 || names[0].equals("")) {
-			return;
-		}
-		for (String lotteryName : names) {
-			Lottery lottery = manager.searchLottery(lotteryName);
-			if (lottery == null)
-				continue;
-			String format;
-			if (lottery.isRunByTime())
-				format = "Lottery %s ends in %s - WW:DD:HH:MM:SS";
-			else
-				format = "Lottery %s has %s tickets left until drawing occurs.";
-			send(player, String.format(getPrefix() + format, lottery.getName(),
-					lottery.formatTimer()));
-		}
-
-	}
-
-	public String updateCheck(String currentVersion) {
+	private String updateCheck(String currentVersion) {
 		try {
 			URL url = new URL(
 					"http://dev.bukkit.org/server-mods/lotteryplus/files.rss");
@@ -776,32 +361,36 @@ public class Plugin extends JavaPlugin implements Listener, Runnable,
 		return currentVersion;
 	}
 
-	public boolean isSign(Block block) {
+	public static int scheduleSyncRepeatingTask(Runnable runnable,
+			long initialDelay, long reatingDelay) {
+		return instance
+				.getServer()
+				.getScheduler()
+				.scheduleSyncRepeatingTask(instance, runnable, initialDelay,
+						reatingDelay);
+	}
+	
+	public static int scheduleSyncDelayedTask(Runnable runnable,
+			long delay) {
+		return instance
+				.getServer()
+				.getScheduler()
+				.scheduleSyncDelayedTask(instance, runnable, delay);
+	}
+
+	public static boolean isSign(Block block) {
 		return block.getState() instanceof Sign;
 	}
 
-	public boolean isSign(Location loc) {
+	public static boolean isSign(Location loc) {
 		return isSign(loc.getBlock());
 	}
 
-	public Economy getEconomy() {
+	public static Economy getEconomy() {
 		return econ;
-	}
-
-	public BukkitScheduler getScheduler() {
-		return scheduler;
-	}
-
-	public Random getRandom() {
-		return random;
-	}
-
-	public LotteryManager getLotteryManager() {
-		return manager;
 	}
 
 	public static final Plugin getInstance() {
 		return instance;
 	}
-
 }

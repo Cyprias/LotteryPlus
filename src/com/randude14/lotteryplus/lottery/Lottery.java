@@ -2,874 +2,408 @@ package com.randude14.lotteryplus.lottery;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 import net.milkbowl.vault.economy.Economy;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.World;
 import org.bukkit.block.Sign;
 import org.bukkit.command.CommandSender;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
-import com.randude14.lotteryplus.Config;
-import com.randude14.lotteryplus.LotteryManager;
+import com.randude14.lotteryplus.ChatUtils;
+import com.randude14.lotteryplus.ClaimManager;
 import com.randude14.lotteryplus.Plugin;
+import com.randude14.lotteryplus.Utils;
+import com.randude14.lotteryplus.WinnersManager;
+import com.randude14.lotteryplus.configuration.Config;
+import com.randude14.lotteryplus.util.FormatOptions;
 import com.randude14.lotteryplus.util.SignFormatter;
 import com.randude14.lotteryplus.util.TimeConstants;
 
-public class Lottery implements TimeConstants, Runnable {
-	private final Plugin plugin;
+public class Lottery implements FormatOptions, TimeConstants, Runnable {
+	private static final Plugin plugin = Plugin.getInstance();
 	private final LotteryTimer timer;
-	private final List<ItemStack> itemRewards;
+	private final List<Reward> rewards;
 	private final List<Sign> signs;
-	private final List<String> players;
-	private final String name;
+	private final String lotteryName;
+	private final Random rand;
+	private LotteryOptions options;
 	private SignFormatter formatter;
-	private String winner;
-	private long cooldown;
-	private double ticketCost;
-	private double pot;
-	private double ticketTax;
-	private double potTax;
-	private boolean itemOnly;
-	private boolean drawing;
-	private boolean repeat;
-	private int maxTickets;
-	private int maxPlayers;
-	private int minPlayers;
-	private int maxTicketsDraw;
 
-	public Lottery(Plugin plugin, String name) {
-		this.plugin = plugin;
-		this.itemRewards = new ArrayList<ItemStack>();
-		this.signs = new ArrayList<Sign>();
-		this.players = new ArrayList<String>();
-		this.name = name;
+	public Lottery(String name) {
+		this.rewards = new ArrayList<Reward>();
+		this.signs = Collections.synchronizedList(new ArrayList<Sign>());
+		this.lotteryName = name;
 		this.timer = new LotteryTimer(this);
-		this.formatter = Config.getLotterySignFormatter(this);
-		drawing = false;
+		this.rand = new Random();
 	}
 
-	public void readSavedData(ConfigurationSection section) {
-		this.repeat = section.getBoolean("repeat", Boolean.TRUE);
-		this.ticketCost = section.getDouble("ticket-cost",
-				Config.getDefaultTicketCost());
-		this.pot = section.getDouble("pot", Config.getDefaultPot());
-		this.itemOnly = section.getBoolean("item-only", Boolean.FALSE);
-		this.maxTickets = section.getInt("max-tickets",
-				Config.getDefaultMaxTickets());
-		this.maxPlayers = section.getInt("max-players",
-				Config.getDefaultMaxPlayers());
-		this.minPlayers = section.getInt("min-players",
-				Config.getDefaultMinPlayers());
-		this.winner = section.getString("past-winner");
-		this.ticketTax = section.getDouble("ticket-tax", 0.0);
-		this.potTax = section.getDouble("pot-tax", 0.0);
-		this.cooldown = section.getLong("cooldown", 0L);
-		this.maxTicketsDraw = section.getInt("max-tickets-draw", -1);
-
-		timer.setTime(section.getLong("save-time"));
-		timer.setResetTime(section.getLong("reset-time"));
-		timer.setRunning(section.getBoolean("timer-running"));
-
-		if (timer.isOver() && !timer.isRunning()) {
-			timer.setRunning(true);
-		}
-
-		if (section.contains("players")) {
-			ConfigurationSection players = section
-					.getConfigurationSection("players");
-
-			for (String player : players.getKeys(false)) {
-				int ticketsBought = players.getInt(player);
-
-				for (int cntr = 0; cntr < ticketsBought; cntr++) {
-					this.players.add(player);
-				}
-
-			}
-
-		}
-		if (section.contains("signs")) {
-			ConfigurationSection signSection = section
-					.getConfigurationSection("signs");
-
-			for (String signName : signSection.getKeys(false)) {
-				ConfigurationSection locSection = signSection
-						.getConfigurationSection(signName);
-				double x = locSection.getDouble("x");
-				double y = locSection.getDouble("y");
-				double z = locSection.getDouble("z");
-				World world = plugin.getServer().getWorld(
-						locSection.getString("world"));
-				if (world != null) {
-					Location loc = new Location(world, x, y, z);
-					if(!plugin.isSign(loc)) continue;
-					signs.add((Sign)loc.getBlock().getState());
-				}
-
-			}
-
-		}
-		if (section.contains("item-rewards")) {
-			ConfigurationSection itemRewardsSection = section
-					.getConfigurationSection("item-rewards");
-
-			for (String matName : itemRewardsSection.getKeys(false)) {
-				ConfigurationSection itemSection = itemRewardsSection
-						.getConfigurationSection(matName);
-				Material material = Material.getMaterial(matName);
-
-				if (material != null) {
-					int amount = itemSection.getInt("stack-size", 1);
-					ItemStack item = null;
-					if (material.getData() != null
-							&& itemSection.contains("data")) {
-						byte data = (byte) itemSection.getInt("data");
-						item = new ItemStack(material, amount, data);
-					}
-
-					else {
-						item = new ItemStack(material, amount);
-					}
-
-					for (String enchantName : itemSection.getKeys(false)) {
-						Enchantment enchantment = Enchantment
-								.getByName(enchantName);
-
-						if (enchantment != null
-								&& enchantment.canEnchantItem(item)) {
-							int level = itemSection.getInt(enchantName, 1);
-
-							try {
-								item.addEnchantment(enchantment, level);
-							} catch (Exception ex) {
-								plugin.warning(name + " - invalid enchantment "
-										+ enchantment.getName()
-										+ " when applying " + level
-										+ " to item " + material.name());
-							}
-
-						}
-
-					}
-					itemRewards.add(item);
-				}
-
-			}
-
-		}
-
+	public LotteryOptions getOptions() {
+		return options;
 	}
 
-	public void loadData(ConfigurationSection section) {
-		players.clear();
-		itemRewards.clear();
-		this.repeat = section.getBoolean("repeat", Boolean.TRUE);
-		this.ticketCost = section.getDouble("ticketcost",
-				Config.getDefaultTicketCost());
-		this.pot = section.getDouble("pot", Config.getDefaultPot());
-		this.itemOnly = section.getBoolean("item-only", Boolean.FALSE);
-		this.maxTickets = section.getInt("max-tickets",
-				Config.getDefaultMaxTickets());
-		this.maxPlayers = section.getInt("max-players",
-				Config.getDefaultMaxPlayers());
-		this.minPlayers = section.getInt("min-players",
-				Config.getDefaultMinPlayers());
-		double d = section.getDouble("time", Config.getDefaultTime());
-		long time = (long) Math.floor(d * HOUR);
-		this.timer.setTime(time);
-		this.timer.setResetTime(time);
-		this.ticketTax = section.getDouble("ticket-tax", 0.0);
-		this.potTax = section.getDouble("pot-tax", 0.0);
-		this.cooldown = section.getLong("cooldown", 0L);
-		this.maxTicketsDraw = section.getInt("max-tickets-draw", -1);
-
-		if (section.contains("item-rewards")) {
-			ConfigurationSection itemRewardsSection = section
-					.getConfigurationSection("item-rewards");
-
-			for (String matName : itemRewardsSection.getKeys(false)) {
-				ConfigurationSection itemSection = itemRewardsSection
-						.getConfigurationSection(matName);
-				Material material = Material.getMaterial(matName);
-
-				if (material != null) {
-					int amount = itemSection.getInt("stack-size", 1);
-					ItemStack item = null;
-					if (material.getData() != null
-							&& itemSection.contains("data")) {
-						byte data = (byte) itemSection.getInt("data");
-						item = new ItemStack(material, amount, data);
-					}
-
-					else {
-						item = new ItemStack(material, amount);
-					}
-
-					for (String enchantName : itemSection.getKeys(false)) {
-						Enchantment enchantment = Enchantment
-								.getByName(enchantName);
-
-						if (enchantment != null
-								&& enchantment.canEnchantItem(item)) {
-							int level = itemSection.getInt(enchantName, 1);
-
-							try {
-								item.addEnchantment(enchantment, level);
-							} catch (Exception ex) {
-								plugin.warning(name + " - invalid enchantment "
-										+ enchantment.getName()
-										+ " when applying " + level
-										+ " to item " + material.name());
-							}
-
-						}
-
-					}
-					itemRewards.add(item);
-				}
-
-			}
-
-		}
-
+	public final String getName() {
+		return lotteryName;
 	}
 
-	private void readResetData() {
-		ConfigurationSection section = getDataSection();
-		long time = section.getLong("reset-add-time", 0L);
-		this.timer.setResetTime(timer.getResetTime() + time);
-		this.ticketCost += section.getDouble("reset-add-ticketcost", 0.0);
-		this.pot += section.getDouble("reset-add-pot", 0.0);
-		this.cooldown += section.getLong("reset-add-cooldown", 0L);
-		this.maxTickets += section.getInt("reset-add-max-tickets", 0);
-		this.minPlayers += section.getInt("reset-add-min-players", 0);
-		this.maxPlayers += section.getInt("reset-add-max-players", 0);
-		this.ticketTax += section.getDouble("reset-add-ticket-tax", 0.0);
-		this.potTax += section.getDouble("reset-add-pot-tax", 0.0);
-
-		if (section.contains("reset-add-item-rewards")) {
-			ConfigurationSection itemRewardsSection = section
-					.getConfigurationSection("reset-add-item-rewards");
-
-			for (String matName : itemRewardsSection.getKeys(false)) {
-				ConfigurationSection itemSection = itemRewardsSection
-						.getConfigurationSection(matName);
-				Material material = Material.getMaterial(matName);
-
-				if (material != null) {
-					int amount = itemSection.getInt("stack-size", 1);
-					ItemStack item = null;
-					if (material.getData() != null
-							&& itemSection.contains("data")) {
-						byte data = (byte) itemSection.getInt("data");
-						item = new ItemStack(material, amount, data);
-					}
-
-					else {
-						item = new ItemStack(material, amount);
-					}
-
-					for (String enchantName : itemSection.getKeys(false)) {
-						Enchantment enchantment = Enchantment
-								.getByName(enchantName);
-
-						if (enchantment != null
-								&& enchantment.canEnchantItem(item)) {
-							int level = itemSection.getInt(enchantName, 1);
-
-							try {
-								item.addEnchantment(enchantment, level);
-							} catch (Exception ex) {
-								plugin.warning(name + " - invalid enchantment "
-										+ enchantment.getName()
-										+ " when applying " + level
-										+ " to item " + material.name());
-							}
-
-						}
-
-					}
-					itemRewards.add(item);
-				}
-
-			}
-
-		}
-
+	public boolean isDrawing() {
+		return options.get("drawing", false);
 	}
-
-	public ConfigurationSection getDataSection() {
-		LotteryManager manager = plugin.getLotteryManager();
-		manager.reloadConfig();
-		ConfigurationSection section = manager.getConfig()
-				.getConfigurationSection("lotteries")
-				.getConfigurationSection(name);
-		return section;
-	}
-	
-	public void newSignFormatter() {
-		formatter = Config.getLotterySignFormatter(this);
-	}
-
-	public boolean isItemOnly() {
-		return itemOnly && !itemRewards.isEmpty();
-	}
-
-	public boolean isRunByTime() {
-		return maxTicketsDraw == -1;
-	}
-
-	public int getMaxTickets() {
-		return maxTickets;
-	}
-
-	public int getMaxPlayers() {
-		return maxPlayers;
-	}
-
-	public int getMinPlayers() {
-		return minPlayers;
-	}
-
-	public List<ItemStack> getItemRewards() {
-		return itemRewards;
-	}
-
 	public boolean isRunning() {
 		return timer.isRunning();
 	}
 
-	public boolean isDrawing() {
-		return drawing;
+	public boolean isItemOnly() {
+		int num = 0;
+		for(Reward reward : rewards) {
+			if(reward instanceof ItemReward)
+				num++;
+		}
+		return options.get(Config.DEFAULT_ITEM_ONLY) && num > 0;
+	} 
+	
+	public String format(String mess) {
+		String winner = options.get("winner", null);
+		return mess.replace(FORMAT_REWARD, formatReward())
+				.replace(FORMAT_TIME, timer.format())
+				.replace(FORMAT_NAME, lotteryName)
+				.replace(FORMAT_WINNER, (winner != null) ? winner : "no winner yet")
+				.replace(FORMAT_TICKET_COST, String.format("%,.2f", options.get(Config.DEFAULT_TICKET_COST)))
+				.replace(FORMAT_TICKET_TAX, String.format("%,.2f", options.get(Config.DEFAULT_TICKET_TAX)))
+				.replace(FORMAT_POT_TAX, String.format("%,.2f", options.get(Config.DEFAULT_POT_TAX)));
+	}
+	
+	private String formatReward() {
+		if(!isItemOnly())
+			return Utils.format(options.get(Config.DEFAULT_POT));
+		int num = 0;
+		for(int cntr = 0;cntr < rewards.size();cntr++) {
+			if(rewards instanceof ItemReward)
+				 num++;
+		}
+		return num + " item(s)";
 	}
 
-	public boolean isRepeating() {
-		return repeat;
+	public void setOptions(LotteryOptions options) {
+		this.options = options;
+		rewards.clear();
+		rand.setSeed(Utils.loadSeed(options.get(Config.DEFAULT_SEED)));
+		String read = options.get(Config.DEFAULT_ITEM_REWARDS);
+		if(read == null || read.equals("")) {
+			for(String line : read.split("\\s+")) {
+				ItemStack item = Utils.loadItemStack(line);
+				if(item != null)
+					rewards.add(new ItemReward(item));
+			}
+		}
+		timer.setRunning(true);
+		if(options.contains("save-time") && options.contains("reset-time")) {
+			long saveTime = options.get("save-time", 0L);
+			timer.setTime(saveTime);
+			long resetTime = options.get("reset-time", 0L);
+			timer.setResetTime(resetTime);
+		} else {
+			long time = options.get(Config.DEFAULT_TIME);
+			timer.setTime(time);
+			timer.setResetTime(time);
+		}
+		if(options.contains("signs")) {
+			String line = options.get("signs", "");
+			for(String str : line.split("\\s+")) {
+				Location loc = Utils.parseToLocation(str);
+				if(loc != null && Plugin.isSign(loc))
+					signs.add((Sign) loc.getBlock().getState());
+			}
+		}
+	}
+	
+	public void save() {
+		options.set("save-time", timer.getTime());
+		options.set("reset-time", timer.getResetTime());
+		if(!signs.isEmpty()) {
+			String line = "";
+			int len = signs.size();
+			for(int cntr = 0;cntr < len;cntr++) {
+				line += Utils.parseToString(signs.get(cntr).getLocation());
+				if(cntr < len-1)
+					line += " ";
+			}
+			options.set("signs", line);
+		}
 	}
 
-	public void setDrawing(boolean flag) {
-		this.drawing = flag;
+	public boolean canBuy(Player player, int tickets) {
+		return this.canBuy(player.getName(), tickets);
 	}
 
-	public void registerSign(Sign sign) {
-		signs.add(sign);
-		updateSigns();
+	public boolean canBuy(String player, int tickets) {
+		int maxTickets = options.get(Config.DEFAULT_MAX_TICKETS, 0);
+		if (maxTickets <= 0)
+			return true;
+		int num = options.get("players." + player, 0);
+		return num + tickets <= maxTickets;
+	}
+
+	public boolean buyTickets(Player player, int tickets) {
+		if (!canBuy(player, tickets)) {
+			ChatUtils.error(player, "You cannot buy this many tickets.");
+			return false;
+		}
+		Economy econ = Plugin.getEconomy();
+		String name = player.getName();
+		if (!econ.hasAccount(name)) {
+			ChatUtils.error(player,
+					"You do not have an account with your server's economy.");
+			return false;
+		}
+		double ticketCost = options.get(Config.DEFAULT_TICKET_COST);
+		double sub = ticketCost * (double) tickets;
+		if (!econ.has(name, sub)) {
+			ChatUtils
+					.error(player,
+							"You do not have enough money to buy this amount of tickets.");
+			return false;
+		}
+		econ.withdrawPlayer(name, sub);
+		int num = options.get("players." + name, 0);
+		options.set("players." + name, num + tickets);
+		double ticketTax = options.get(Config.DEFAULT_TICKET_TAX);
+		double add = ticketCost - (ticketCost * (ticketTax / 100));
+		double d = add * (double) tickets;
+		ChatUtils.send(player, ChatColor.YELLOW,
+				"You have bought %s%d tickets %sfor %s%s.", ChatColor.GOLD,
+				tickets, ChatColor.YELLOW, ChatColor.GOLD);
+		ChatUtils
+				.send(player, ChatColor.GOLD,
+						"%s %shas been added to %s%s's %spot.",
+						Utils.format(d), ChatColor.YELLOW, ChatColor.GOLD,
+						lotteryName, ChatColor.YELLOW);
+		options.set(Config.DEFAULT_POT, options.get(Config.DEFAULT_POT) + d);
+		return true;
 	}
 
 	public Sign getSignAt(Location location) {
-
-		for (Sign lotterySign : signs) {
-
-			if (plugin.locsInBounds(location, lotterySign.getBlock()
-					.getLocation())) {
-				return lotterySign;
+		synchronized(signs) {
+			for (Sign lotterySign : signs) {
+				if (Plugin.locsInBounds(location, lotterySign.getBlock()
+						.getLocation())) {
+					return lotterySign;
+				}
 			}
-
+			return null;
 		}
-
-		return null;
 	}
 
 	public boolean unregisterSign(Location location) {
-
-		for (int cntr = 0; cntr < signs.size(); cntr++) {
-			Sign sign = signs.get(cntr);
-
-			if (plugin.locsInBounds(location, sign.getBlock().getLocation())) {
-				signs.remove(cntr);
-				sign.setLine(0, "");
-				sign.setLine(1, "");
-				sign.setLine(2, "");
-				sign.setLine(3, "");
-				sign.update();
-				return true;
+		synchronized(signs) {
+			for (int cntr = 0; cntr < signs.size(); cntr++) {
+				Sign sign = signs.get(cntr);
+				if (Plugin.locsInBounds(location, sign.getLocation())) {
+					signs.remove(cntr);
+					sign.setLine(0, "");
+					sign.setLine(1, "");
+					sign.setLine(2, "");
+					sign.setLine(3, "");
+					sign.update();
+					return true;
+				}
 			}
-
+			return false;
 		}
-
-		return false;
+	}
+	
+	public void registerSign(Sign sign) {	
+		synchronized(signs) {
+			signs.add(sign);		
+			updateSigns();
+		}	
 	}
 
 	public void updateSigns() {
-
-		for (Sign sign : signs) {
-			if (!sign.getBlock().getChunk().isLoaded()) {
-				continue;
+		synchronized(signs) {
+			for (Sign sign : signs) {
+				if (!sign.getChunk().isLoaded()) {
+					continue;
+				}
+				formatter.format(sign);
+				sign.update(true);
 			}
-			formatter.format(sign);
-			sign.update(true);
 		}
-
 	}
 
 	public boolean signAtLocation(Location location) {
-
-		for (Sign sign : signs) {
-
-			if (plugin.locsInBounds(sign.getBlock().getLocation(), location)) {
-				return true;
+		synchronized(signs) {
+			for (Sign sign : signs) {
+				if (Plugin.locsInBounds(sign.getLocation(), location)) {
+					return true;
+				}
 			}
-
+			return false;
 		}
-
-		return false;
-	}
-
-	public boolean hasPlayerBoughtTicket(String player) {
-		return players.contains(player);
-	}
-
-	public double playerReward(String player, int tickets) {
-		return playerBought(player, tickets, false);
-	}
-
-	public double playerBought(String player, int tickets) {
-		return playerBought(player, tickets, true);
-	}
-
-	private double playerBought(String player, int tickets, boolean flag) {
-		double value = 0.0;
-		for (int cntr = 0; cntr < tickets; cntr++) {
-			players.add(player);
-			if (flag) {
-				value += (isItemOnly()) ? 0 : ticketCost
-						- (ticketCost * (ticketTax / 100));
-				pot += (isItemOnly()) ? 0 : ticketCost
-						- (ticketCost * (ticketTax / 100));
-			}
-		}
-		if (cooldown > 0 && maxTicketsDraw == -1) {
-			timer.setTime(timer.getTime() + cooldown);
-		}
-		if (maxTicketsDraw != -1 && players.size() >= maxTicketsDraw) {
-			draw(null);
-		}
-
-		return value;
-	}
-
-	public void addToPot(double add) {
-		pot += add;
-
-		for (String name : getPlayers()) {
-			Player player = Bukkit.getPlayer(name);
-
-			if (player != null) {
-				plugin.send(player, String.format(
-						"%s's pot has been raised to %s", this.name,
-						formatPot()));
-			}
-
-		}
-
-	}
-
-	public double getTicketCost() {
-		return ticketCost;
-	}
-
-	public void sendInfo(Player player) {
-		if (isRunByTime()) {
-			plugin.send(player, "Time Left: " + timer.format());
-		} else {
-			plugin.send(
-					player,
-					String.format("Tickets Left: %d",
-							maxTicketsDraw - players.size()));
-		}
-		if (!isItemOnly()) {
-			plugin.send(player, "Pot: " + formatPot());
-		}
-		for (ItemStack itemReward : itemRewards) {
-			plugin.send(player, "Item Reward: " + itemReward.getType().name()
-					+ " " + itemReward.getAmount());
-		}
-		plugin.send(player, "Ticket Cost: " + formatTicketCost());
-		plugin.send(player, "Ticket Tax: " + formatTicketTax());
-		plugin.send(player, "Pot Tax: " + formatPotTax());
-		plugin.send(player, "Players Entered: " + playersEntered());
-		plugin.send(player,
-				"Tickets Bought: " + getTicketsBought(player.getName()));
 	}
 
 	public void sendInfo(CommandSender sender) {
-		if (isRunByTime()) {
-			sender.sendMessage("Time Left: " + timer.format());
-		} else {
-			sender.sendMessage(String.format("Tickets Left: %d", maxTicketsDraw
-					- players.size()));
-		}
+			ChatUtils.send(sender, "Time Left: " + timer.format());
 		if (!isItemOnly()) {
-			sender.sendMessage("Pot: " + formatPot());
+			ChatUtils.send(sender, "Pot: " + Utils.format(options.get(Config.DEFAULT_POT)));
 		}
-		for (ItemStack itemReward : itemRewards) {
-			sender.sendMessage("Item Reward: " + itemReward.getType().name()
-					+ " " + itemReward.getAmount());
+		for (Reward reward : rewards) {
+			ChatUtils.send(sender, reward.getInfo());
 		}
-		sender.sendMessage("Ticket Cost: " + formatTicketCost());
-		sender.sendMessage("Ticket Tax: " + formatTicketTax());
-		sender.sendMessage("Pot Tax: " + formatPotTax());
-		sender.sendMessage("Players Entered: " + playersEntered());
+		ChatUtils.send(sender, "Ticket Cost: " + Utils.format(options.get(Config.DEFAULT_TICKET_COST)));
+		ChatUtils.send(sender, "Ticket Tax: " + Utils.format(options.get(Config.DEFAULT_TICKET_TAX)));
+		ChatUtils.send(sender, "Pot Tax: " + Utils.format(options.get(Config.DEFAULT_POT_TAX)));
+		ChatUtils.send(sender, "Players Entered: " + getPlayersEntered());
+		if(sender instanceof Player)
+			ChatUtils.send(sender, "Tickets Bought: " + getTicketsBought(sender.getName()));
 	}
-
-	public int playersEntered() {
-		return getPlayers().size();
+	
+	public void sendTimeLeftInfo(CommandSender sender) {
+		String message = String.format("%s: %s", timer.format());
+		if(sender instanceof Player)
+			message += ", " + String.format("%d/%d Tickets Left To Buy");
+		ChatUtils.send(sender, ChatColor.YELLOW, message);
+	}
+	
+	public int getPlayersEntered() {
+		Set<String> players = new HashSet<String>();
+		for (String key : options.keySet()) {
+			if (key.startsWith("players")) {
+				int index = key.indexOf('.');
+				String player = key.substring(index + 1);
+				int num = options.get(key, 0);
+				for (int cntr = 0; cntr < num; cntr++) {
+					players.add(player);
+				}
+			}
+		}
+		return players.size();
 	}
 
 	public List<String> getPlayers() {
-		List<String> list = new ArrayList<String>();
-
-		for (String player : players) {
-
-			if (!list.contains(player)) {
-				list.add(player);
+		List<String> players = new ArrayList<String>();
+		for (String key : options.keySet()) {
+			if (key.startsWith("players")) {
+				int index = key.indexOf('.');
+				String player = key.substring(index + 1);
+				int num = options.get(key, 0);
+				for (int cntr = 0; cntr < num; cntr++) {
+					players.add(player);
+				}
 			}
-
 		}
-
-		return list;
+		return players;
 	}
 
 	public int getTicketsBought(String name) {
-		int tickets = 0;
-
-		for (String player : players) {
-
-			if (player.equals(name)) {
-				tickets++;
-			}
-
-		}
-
-		return tickets;
+		return options.get("players." + name, 0);
 	}
 
 	public long getTime() {
 		return timer.getTime();
 	}
 
-	public void countdown() {
-		timer.countdown();
+	public void draw() {
+		draw(null);
 	}
 
-	public String getName() {
-		return name;
-	}
-
-	public String formatPot() {
-		return Config.formatMoney(pot);
-	}
-
-	public String formatTicketCost() {
-		return Config.formatMoney(ticketCost);
-	}
-
-	public String formatTicketTax() {
-		return (ticketTax == 0.0) ? "none" : ticketTax + "%";
-	}
-
-	public String formatPotTax() {
-		return (potTax == 0.0) ? "none" : potTax + "%";
-	}
-
-	public String formatTimer() {
-		if (isRunByTime()) {
-			return timer.format();
-		} else {
-			return String.format("%d tickets left",
-					maxTicketsDraw - players.size());
+	public void draw(CommandSender sender) {
+		if (options.get("drawing", false)) {
+			return;
 		}
-	}
-
-	public String formatReward() {
-		return (!isItemOnly()) ? formatPot() : formatItemRewards();
-	}
-
-	private String formatItemRewards() {
-		return (itemRewards.size() == 1) ? itemRewards.get(0).getType().name()
-				+ " " + itemRewards.get(0).getAmount() : itemRewards.size()
-				+ " items";
-	}
-
-	public String formatWinner() {
-		return (winner == null) ? "No winner" : winner;
-	}
-
-	public void start() {
-		timer.start();
-	}
-
-	public void stop() {
-		timer.stop();
-	}
-
-	private void reset() {
-		itemRewards.clear();
-		players.clear();
-		plugin.getLotteryManager().reloadLottery(name);
-		timer.start();
-	}
-
-	public void draw(String name) {
-		if (name == null) {
-			plugin.broadcast(
-					ChatColor.YELLOW.toString() + "[" + plugin.getName()
-							+ "] - Lottery " + ChatColor.GOLD.toString()
-							+ this.name + ChatColor.YELLOW.toString()
-							+ " is ending. and the winner is...", "lottery.buy");
+		if (sender == null) {
+			ChatUtils.broadcast("%s %sis ending, and the winner is...",
+					ChatColor.GOLD, lotteryName, ChatColor.YELLOW);
 		} else {
-			plugin.broadcast(
-					ChatColor.YELLOW.toString() + "[" + plugin.getName()
-							+ "] - " + ChatColor.GOLD + name + ChatColor.YELLOW
-							+ " is force drawing the lottery " + ChatColor.GOLD
-							+ this.name + ChatColor.YELLOW
-							+ ", and the winner is...", "lottery.buy");
+			ChatUtils.broadcast(
+					"%s%s %sis force drawing %s%s, %sand the winner is...",
+					ChatColor.GOLD, sender.getName(), ChatColor.YELLOW,
+					ChatColor.GOLD, lotteryName, ChatColor.YELLOW);
 		}
-		plugin.getScheduler().scheduleSyncDelayedTask(plugin, this,
-				SERVER_SECOND * 3);
+		Plugin.scheduleSyncDelayedTask(this, SERVER_SECOND * 3);
 		timer.setRunning(false);
-		setDrawing(true);
 		updateSigns();
+		options.set("drawing", true);
 	}
 
 	public void run() {
-		int count = playersEntered();
-
-		if (count < minPlayers || count < 1) {
-			plugin.getServer()
-					.broadcastMessage(
-							ChatColor.YELLOW
-									+ "["
-									+ plugin.getName()
-									+ "] - no one! there were not enough players entered. restarting lottery.");
+		List<String> players = this.getPlayers();
+		int len = players.size();
+		if (len < options.get(Config.DEFAULT_MIN_PLAYERS) || len < 1) {
+			ChatUtils
+					.broadcast("no one! there were not enough players entered. restarting lottery.");
 			readResetData();
-			timer.reset();
-			timer.start();
-			setDrawing(false);
+			options.set("drawing", false);
 			return;
 		}
 
-		Random random = plugin.getRandom();
-		Collections.shuffle(players, random);
-		String winner = players.get(random.nextInt(players.size()));
-		this.winner = winner;
+		Collections.shuffle(players, rand);
+		String winner = players.get(rand.nextInt(players.size()));
+		options.set("winner", winner);
+		double pot = options.get(Config.DEFAULT_POT);
+		double potTax = options.get(Config.DEFAULT_POT_TAX);
 		double winnings = pot - (pot * (potTax / 100));
 
-		StringBuilder message = new StringBuilder();
-		message.append(ChatColor.YELLOW + "[" + plugin.getName() + "] - "
-				+ ChatColor.GOLD + winner + "! " + ChatColor.YELLOW
-				+ "Player has won ");
+		ChatUtils.broadcast("%s%s!", ChatColor.GOLD, winner);
 
-		if (isItemOnly()) {
-
-			if (itemRewards.size() == 1) {
-				ItemStack itemReward = itemRewards.get(0);
-				message.append("a(n) " + ChatColor.GOLD.toString()
-						+ itemReward.getType().name());
-			}
-
-			else {
-				message.append(ChatColor.GOLD.toString() + itemRewards.size()
-						+ " items");
-			}
-
+		StringBuilder logWinner = new StringBuilder(lotteryName + ": " + winner);
+		if (!this.isItemOnly())
+			rewards.add(0, new PotReward(winnings));
+		int rewardsLen = rewards.size();
+		for (int cntr = 0; cntr < rewardsLen; cntr++) {
+			logWinner.append(", ");
+			logWinner.append(rewards.get(cntr).getInfo());
 		}
 
-		else {
-			message.append(ChatColor.GOLD + Config.formatMoney(winnings));
-
-			if (!itemRewards.isEmpty()) {
-
-				if (itemRewards.size() == 1) {
-					ItemStack itemReward = itemRewards.get(0);
-					message.append(ChatColor.YELLOW + " and a(n) "
-							+ ChatColor.GOLD.toString()
-							+ itemReward.getType().name());
-				}
-
-				else {
-					message.append(ChatColor.YELLOW + " and "
-							+ ChatColor.GOLD.toString() + itemRewards.size()
-							+ " items");
-				}
-
-			}
-
-		}
-
-		message.append("!");
-		plugin.getServer()
-				.broadcastMessage(ChatColor.GOLD.toString() + message);
-		StringBuilder logWinner = new StringBuilder(name + ": " + winner);
-
-		if (isItemOnly()) {
-
-			if (itemRewards.size() == 1) {
-				ItemStack itemReward = itemRewards.get(0);
-				logWinner.append(", Item Reward - ["
-						+ itemReward.getType().name() + "]");
-			}
-
-			else {
-				logWinner.append(", Item Rewards - [" + itemRewards.size()
-						+ " items]");
-			}
-
-		}
-
-		else {
-			logWinner.append(", Winnings - [" + Config.formatMoney(winnings) + "]");
-
-			if (!itemRewards.isEmpty()) {
-
-				if (itemRewards.size() == 1) {
-					ItemStack itemReward = itemRewards.get(0);
-					logWinner.append(", Item Reward(s) - ["
-							+ itemReward.getType().name() + "]");
-				}
-
-				else {
-					logWinner.append(", Item Reward(s) - ["
-							+ itemRewards.size() + " items]");
-				}
-
-			}
-
-		}
-
-		plugin.addWinner(logWinner.toString());
-		Economy econ = plugin.getEconomy();
+		WinnersManager.logWinner(logWinner.toString());
 		Player pWinner = Bukkit.getPlayer(winner);
 
 		if (pWinner != null) {
-
-			if (!isItemOnly()) {
-				econ.depositPlayer(winner, winnings);
+			for (Reward reward : rewards) {
+				reward.rewardPlayer(pWinner);
 			}
-			Map<Integer, ItemStack> itemsToBeDropped = pWinner.getInventory()
-					.addItem(
-							itemRewards.toArray(new ItemStack[itemRewards
-									.size()]));
-			World world = pWinner.getWorld();
-			Location winnerLoc = pWinner.getLocation();
-			for (ItemStack item : itemsToBeDropped.values()) {
-				world.dropItem(winnerLoc, item);
-			}
-
 		}
 
 		else {
-
-			if (isItemOnly()) {
-				plugin.addClaim(winner, name, itemRewards);
-			}
-
-			else {
-
-				if (itemRewards.isEmpty()) {
-					plugin.addClaim(winner, name, winnings);
-				}
-
-				else {
-					plugin.addClaim(winner, name, itemRewards, winnings);
-				}
-
-			}
-
+			ClaimManager.addClaim(winner, lotteryName, rewards);
 		}
+	}
 
-		if (repeat) {
-			reset();
-			setDrawing(false);
-			return;
+	private void readResetData() {
+		long time = options.get("reset-add-time", 0L);		
+		this.timer.setResetTime(timer.getResetTime() + time);		
+		options.set(Config.DEFAULT_TICKET_COST, options.get(Config.DEFAULT_TICKET_COST) + options.get(Config.DEFAULT_RESET_ADD_TICKET_COST));	
+		options.set(Config.DEFAULT_POT, options.get(Config.DEFAULT_POT) + options.get(Config.DEFAULT_RESET_ADD_POT));	
+		options.set(Config.DEFAULT_COOLDOWN, options.get(Config.DEFAULT_COOLDOWN) + options.get(Config.DEFAULT_RESET_ADD_COOLDOWN));
+		options.set(Config.DEFAULT_MAX_TICKETS, options.get(Config.DEFAULT_MAX_TICKETS) + options.get(Config.DEFAULT_RESET_ADD_MAX_TICKETS));	
+		options.set(Config.DEFAULT_MAX_PLAYERS, options.get(Config.DEFAULT_MAX_PLAYERS) + options.get(Config.DEFAULT_RESET_ADD_MAX_PLAYERS));			
+		options.set(Config.DEFAULT_MIN_PLAYERS, options.get(Config.DEFAULT_MIN_PLAYERS) + options.get(Config.DEFAULT_RESET_ADD_MIN_PLAYERS));	
+		options.set(Config.DEFAULT_TICKET_TAX, options.get(Config.DEFAULT_TICKET_TAX) + options.get(Config.DEFAULT_RESET_ADD_TICKET_TAX));	
+		options.set(Config.DEFAULT_POT_TAX, options.get(Config.DEFAULT_POT_TAX) + options.get(Config.DEFAULT_RESET_ADD_POT_TAX));	
+		String read = options.get(Config.DEFAULT_RESET_ADD_ITEM_REWARDS);
+		for(String line : read.split("\\s+")) {
+			ItemStack item = Utils.loadItemStack(line);
+			if(item != null)
+				rewards.add(new ItemReward(item));
 		}
-		setDrawing(false);
-		updateSigns();
-		plugin.getLotteryManager().removeLottery(name);
 	}
 
 	public Plugin getPlugin() {
 		return plugin;
 	}
 
+	public int hashCode() {
+		return toString().hashCode();
+	}
+
 	public String toString() {
-		return name;
+		return lotteryName;
 	}
-
-	public void save(ConfigurationSection section) {
-		section.set("ticketcost", ticketCost);
-		section.set("pot", pot);
-		section.set("save-time", timer.getTime());
-		section.set("reset-time", timer.getResetTime());
-		section.set("timer-running", timer.isRunning());
-		section.set("repeat", repeat);
-		section.set("item-only", itemOnly);
-		section.set("max-tickets", maxTickets);
-		section.set("max-players", maxPlayers);
-		section.set("min-players", minPlayers);
-		section.set("max-tickets-draw", maxTicketsDraw);
-		section.set("past-winner", winner);
-		section.set("ticket-tax", ticketTax);
-		section.set("pot-tax", potTax);
-		section.set("cooldown", cooldown);
-
-		if (!players.isEmpty()) {
-
-			Map<String, Object> playerMap = new HashMap<String, Object>();
-			for (String player : getPlayers()) {
-				playerMap.put(player, getTicketsBought(player));
-			}
-			section.createSection("players", playerMap);
-
-		}
-		if (!signs.isEmpty()) {
-			ConfigurationSection signSection = section.createSection("signs");
-
-			int cntr = 1;
-			for (Sign sign : signs) {
-				Location loc = sign.getBlock().getLocation();
-				ConfigurationSection locSection = signSection
-						.createSection("sign" + cntr);
-				locSection.set("world", loc.getWorld().getName());
-				locSection.set("x", loc.getBlockX());
-				locSection.set("y", loc.getBlockY());
-				locSection.set("z", loc.getBlockZ());
-				cntr++;
-			}
-
-		}
-		if (!itemRewards.isEmpty()) {
-
-			ConfigurationSection itemSection = section
-					.createSection("item-rewards");
-			for (ItemStack item : itemRewards) {
-				Map<String, Object> saveMap = new HashMap<String, Object>();
-				saveMap.put("stack-size", item.getAmount());
-				if (item.getData() != null) {
-					saveMap.put("data", item.getData().getData());
-				}
-				Map<Enchantment, Integer> enchantments = item.getEnchantments();
-				for (Enchantment enchantment : enchantments.keySet()) {
-					saveMap.put(enchantment.getName(),
-							enchantments.get(enchantment));
-				}
-				itemSection.createSection(item.getType().name(), saveMap);
-			}
-
-		}
-
-	}
-
 }

@@ -3,6 +3,7 @@ package com.randude14.lotteryplus.lottery;
 import org.bukkit.ChatColor;
 import org.bukkit.block.Sign;
 
+import com.randude14.lotteryplus.ChatUtils;
 import com.randude14.lotteryplus.util.FormatOptions;
 import com.randude14.lotteryplus.util.SignFormatter;
 
@@ -48,14 +49,8 @@ public class LotterySignFormatter implements SignFormatter, FormatOptions {
 	}
 
 	private String format(String format) {
-		String message = lottery.getPlugin().replaceColors(format)
-				.replace(FORMAT_REWARD, lottery.formatReward())
-				.replace(FORMAT_TIME, lottery.formatTimer())
-				.replace(FORMAT_NAME, lottery.getName())
-				.replace(FORMAT_WINNER, lottery.formatWinner())
-				.replace(FORMAT_TICKET_COST, lottery.formatTicketCost())
-		        .replace(FORMAT_TICKET_TAX, lottery.formatTicketTax())
-		        .replace(FORMAT_POT_TAX, lottery.formatPotTax());
+		String message = ChatUtils.replaceColorCodes(format);
+		message = lottery.format(message);
 		return message;
 	}
 

@@ -1,289 +1,121 @@
 package com.randude14.lotteryplus;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.Map;
 
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import com.randude14.lotteryplus.lottery.Lottery;
+import com.randude14.lotteryplus.lottery.LotteryOptions;
+import com.randude14.lotteryplus.util.CustomYaml;
 import com.randude14.lotteryplus.util.TimeConstants;
 
 public class LotteryManager implements TimeConstants, Runnable {
-
-	private final Plugin plugin;
-	private List<Lottery> lotteries;
-	private FileConfiguration lotteryConfig;
-	private File lotteryFile;
-	private boolean reloading;
-
-	protected LotteryManager(final Plugin plugin) {
-		this.plugin = plugin;
-		lotteries = new ArrayList<Lottery>();
-		reloadConfig();
-		if (!lotteryFile.exists()) {
-			plugin.info("'lotteries.yml' was not found. Writing defaults.");
-			saveDefaultConfig();
+	private static final CustomYaml lotteriesConfig = new CustomYaml("lotteries.yml");
+	private static final Map<String, Lottery> lotteries = new HashMap<String, Lottery>();
+	
+	public static boolean loadLottery(CommandSender sender, String find) {
+		if(lotteries.containsKey(find.toLowerCase())) {
+			return false;
 		}
-		reloading = false;
-	}
-
-	public Lottery searchLottery(String name) {
-
-		for (Lottery lottery : lotteries) {
-
-			if (lottery.getName().equalsIgnoreCase(name)) {
-				return lottery;
-			}
-
-		}
-
-		return null;
-	}
-
-	public void run() {
-
-		while (reloading) {
-			pause(10L);
-		}
-		pause(1000L);
-		for (int cntr = 0; cntr < lotteries.size(); cntr++) {
-			Lottery lottery = lotteries.get(cntr);
-			if (!lottery.isRunByTime()) {
-				continue;
-			}
-			try {
-				lottery.countdown();
-			} catch (Exception ex) {
-			}
-
-			if (lottery.isDrawing()) {
-				long delay = Config.getTimeAfterDraws() + 3;
-				while (delay > 0) {
-					pause(1000L);
-					delay--;
-				}
-
-			}
-
-			if (!nameExists(lottery.getName())) {
-				cntr--;
-			}
-
-		}
-	}
-
-	private void pause(long milliseconds) {
-
-		try {
-			Thread.sleep(milliseconds);
-		} catch (Exception ex) {
-			plugin.warning("exception caught in pause() - " + ex);
-		}
-
-	}
-
-	public void reloadConfig() {
-
-		if (lotteryFile == null) {
-			lotteryFile = new File(plugin.getDataFolder(), "lotteries.yml");
-		}
-
-		lotteryConfig = YamlConfiguration.loadConfiguration(lotteryFile);
-
-		InputStream lotteryStream = plugin.getResource("lotteries.yml");
-
-		if (lotteryStream != null) {
-			YamlConfiguration defConfig = YamlConfiguration
-					.loadConfiguration(lotteryStream);
-			lotteryConfig.setDefaults(defConfig);
-		}
-
-	}
-
-	public void saveDefaultConfig() {
-		plugin.saveResource("lotteries.yml", false);
-	}
-
-	public void saveConfig() {
-
-		if (lotteryConfig == null || lotteryFile == null) {
-			return;
-		}
-
-		try {
-			lotteryConfig.save(lotteryFile);
-		} catch (IOException ex) {
-			Logger.getLogger(JavaPlugin.class.getName()).log(Level.SEVERE,
-					"Could not save config to " + lotteryFile, ex);
-		}
-
-	}
-
-	public ConfigurationSection getInfoSection(String lottery) {
-		reloadConfig();
-		return getConfig().getConfigurationSection("lotteries")
-				.getConfigurationSection(lottery);
-	}
-
-	protected void loadLotteries() {
-
-		try {
-			ConfigurationSection lotterySection = getConfig()
-					.getConfigurationSection("lotteries");
-			ConfigurationSection saveSection = getConfig()
-					.getConfigurationSection("saves");
-			if (lotterySection == null)
-				return;
-
-			for (String lotteryName : lotterySection.getKeys(false)) {
-				Lottery lottery = new Lottery(plugin, lotteryName);
-
-				if (nameExists(lotteryName)) {
+		lotteriesConfig.reloadConfig();
+		ConfigurationSection section = getOrCreateLotteriesSection();
+		for(String sectionName : section.getKeys(false)) {
+			if(sectionName.equalsIgnoreCase(find)) {
+				ConfigurationSection lotteriesSection = section.getConfigurationSection(sectionName);
+				Lottery lottery = new Lottery(sectionName);
+				Map<String, Object> values = lotteriesSection.getValues(true);
+				try {
+					lottery.setOptions(new LotteryOptions(values));
+				} catch (Exception ex) {
+					Logger.warning("Exception caught while trying to load '%s'.", sectionName);
+					Logger.warning("You can try to load this later using '/lottery load <lottery name>'");
 					continue;
 				}
-
-				if (saveSection != null && saveSection.contains(lotteryName)) {
-					ConfigurationSection section = saveSection
-							.getConfigurationSection(lotteryName);
-					lottery.readSavedData(section);
-				} else {
-					ConfigurationSection section = lotterySection
-							.getConfigurationSection(lotteryName);
-					lottery.loadData(section);
-				}
-
-				lotteries.add(lottery);
-				lottery.start();
-			}
-
-			plugin.info("lotteries loaded.");
-		} catch (Exception ex) {
-			ex.printStackTrace();
-			plugin.warning("error has occured while loading lotteries in config.");
-			plugin.abort();
-		}
-
-	}
-
-	protected void reloadLotteries() {
-		reloadConfig();
-		reloading = true;
-
-		try {
-			ConfigurationSection lotterySection = getConfig()
-					.getConfigurationSection("lotteries");
-			Set<String> keys = lotterySection.getKeys(false);
-			for (int cntr = 0; cntr < lotteries.size(); cntr++) {
-				Lottery lottery = lotteries.get(cntr);
-				boolean found = false;
-				for (String key : keys) {
-					if (key.equalsIgnoreCase(lottery.getName()))
-						found = true;
-				}
-				if (!found)
-					lotteries.remove(cntr);
-			}
-
-			for (String lotteryName : keys) {
-				if (nameExists(lotteryName)) {
-					continue;
-				}
-				Lottery lottery = new Lottery(plugin, lotteryName);
-				lotteries.add(lottery);
-				reloadLottery(lotteryName, true);
-				lottery.start();
-			}
-
-			plugin.info("lotteries loaded.");
-		} catch (Exception ex) {
-			ex.printStackTrace();
-			plugin.severe("error has occured while reloading lotteries in config.");
-			plugin.abort();
-		}
-		reloading = false;
-	}
-
-	private void reloadLottery(String lotteryName, boolean flag) {
-		Lottery lottery = searchLottery(lotteryName);
-
-		if (lottery == null) {
-			return;
-		}
-		if (!flag) {
-			reloading = true;
-		}
-		reloadConfig();
-		FileConfiguration config = getConfig();
-		ConfigurationSection lotteriesSection = config
-				.getConfigurationSection("lotteries");
-		ConfigurationSection lotterySection = lotteriesSection
-				.getConfigurationSection(lottery.getName());
-		lottery.loadData(lotterySection);
-		lottery.newSignFormatter();
-		if (!flag) {
-			reloading = false;
-		}
-	}
-
-	public void reloadLottery(String lotteryName) {
-		reloadLottery(lotteryName, false);
-	}
-
-	public void saveLotteries() {
-		ConfigurationSection lotterySection = getConfig()
-				.createSection("saves");
-		for (Lottery lottery : lotteries) {
-			lottery.save(lotterySection.createSection(lottery.getName()));
-		}
-		saveConfig();
-	}
-
-	public boolean nameExists(String name) {
-
-		for (Lottery lottery : lotteries) {
-
-			if (lottery.getName().equalsIgnoreCase(name)) {
+				lotteries.put(sectionName.toLowerCase(), lottery);
 				return true;
 			}
-
 		}
-
 		return false;
 	}
-
-	public void removeLottery(String name) {
-
-		for (int cntr = 0; cntr < lotteries.size(); cntr++) {
-			Lottery lottery = lotteries.get(cntr);
-
-			if (lottery.getName().equalsIgnoreCase(name)) {
-				lotteries.remove(cntr);
+	
+	public static boolean unloadLottery(String find) {
+		ConfigurationSection section = getOrCreateLotteriesSection();
+		for(String sectionName : section.getKeys(false)) {
+			if(sectionName.equalsIgnoreCase(find)) {
+				section.set(sectionName, null);
+				ConfigurationSection savesSection = lotteriesConfig.getConfig().getConfigurationSection("saves");
+				if(savesSection.contains(sectionName)) {
+					savesSection.set(sectionName, null);
+				}
+				return true;
 			}
-
 		}
-
+		return false;
 	}
-
-	public FileConfiguration getConfig() {
-
-		if (lotteryConfig == null) {
-			reloadConfig();
+	
+	public static List<Lottery> getLotteries() {
+		return new ArrayList<Lottery>(lotteries.values());
+	}
+	
+	public static Lottery getLottery(String lotteryName) {
+		return lotteries.get(lotteryName.toLowerCase());
+	}
+	
+	public static void loadLotteries() {
+		lotteriesConfig.reloadConfig();
+		ConfigurationSection section = getOrCreateLotteriesSection();
+		ConfigurationSection savesSection = lotteriesConfig.getConfig().getConfigurationSection("saves");
+		for(String lotteryName : section.getKeys(false)) {
+			if(lotteries.containsKey(lotteryName.toLowerCase()))
+				continue;
+			ConfigurationSection lotteriesSection;
+			if(savesSection != null && savesSection.contains(lotteryName)) {
+				lotteriesSection = savesSection.getConfigurationSection("saves");
+			} else {
+				lotteriesSection = section.getConfigurationSection(lotteryName);
+			}
+			Lottery lottery = new Lottery(lotteryName);
+			Map<String, Object> values = lotteriesSection.getValues(true);
+			try {
+				lottery.setOptions(new LotteryOptions(values));
+			} catch (Exception ex) {
+				Logger.warning("Exception caught while trying to load '%s'.", lotteryName);
+				Logger.warning("You can try to load this later using '/lottery load <lottery name>'");
+				ex.printStackTrace();
+				continue;
+			}
+			lotteries.put(lotteryName.toLowerCase(), lottery);
 		}
-
-		return lotteryConfig;
 	}
-
-	public List<Lottery> getLotteries() {
-		return lotteries;
+	
+	public static void saveLotteries() {
+		ConfigurationSection savesSection = lotteriesConfig.getConfig().createSection("saves");
+		for(Lottery lottery : lotteries.values()) {
+			lottery.save();
+			savesSection.createSection(lottery.getName(), lottery.getOptions().options());
+		}
+		lotteriesConfig.saveConfig();
 	}
+	
+	private static ConfigurationSection getOrCreateLotteriesSection() {
+		FileConfiguration config = lotteriesConfig.getConfig();
+		ConfigurationSection lotteriesSection = config.getConfigurationSection("lotteries");
+		return (lotteriesSection != null) ? lotteriesSection : config.createSection("lotteries");
+	}
+	
+	public void run() {
+		
+	}
+	
+	static class TimerTask implements Runnable {
 
+		public void run() {
+			
+		}
+	}
 }

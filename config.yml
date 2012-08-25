@@ -1,8 +1,5 @@
 properties:
 
-    #whether permission should default to ops or not
-    permissions-op: false
-    
     #time between lottery drawings
     time-after-draws: 5
     
