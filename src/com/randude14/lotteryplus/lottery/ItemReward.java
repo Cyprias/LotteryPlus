@@ -33,6 +33,10 @@ public class ItemReward implements Reward {
 		return String.format("Item Reward: %d %s(s)", reward.getAmount(), reward.getType().name());
 	}
 	
+	public String toString() {
+		return String.format("[%d %s(s)]", reward.getAmount(), reward.getType().name());
+	}
+	
 	public static ItemReward deserialize(Map<String, Object> map) {
 		return new ItemReward(ItemStack.deserialize(map));
 	}

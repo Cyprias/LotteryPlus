@@ -2,7 +2,8 @@ name: LotteryPlus
 main: com.randude14.lotteryplus.Plugin
 depend: [Vault]
 authors: [Randude14]
-version: 0.7.3a
+description: 'Powerful and funtional lottery interface that makes lotteries easy to make and fun to play!'
+version: 0.7.4
 commands: 
     lottery: 
-      description: basic command
+        description: basic command

@@ -1,46 +1,158 @@
+# config properties
+# NOTE: color codes can be used the messages
+#
 properties:
 
-    #time between lottery drawings
-    time-after-draws: 5
-    
-    #should broadcast the buy message out
-    should-broadcast-buy: true
-    
-    #time between reminder messages
-    reminder-message-time: 30
-    
-    #whether to enable the reminder message or not
-    reminder-message-enable: true
-    
-    #used to remind players of the lotteries
+    # reminder message to send out
     reminder-message: '&eDont forget to check your servers lotteries. Type /lottery list to list lotteries.'
-    
-    #used when a player attempts to buy a ticket from a sign
+
+    # sign message to send when users use signs
     sign-message: '&eName: <name><newline>&eTicket Cost: <ticketcost>'
-    
-    #used when a player buys a ticket
-    buy-message: '&e<player> has bought <ticket> ticket(s) for <lottery>'
-    
-    #used when a player logs. can also have multiple lotteries if desired -> 'MAIN, MAIN2, MAIN3.', ect...
-    #if you don't want there to be any lotteries set this as ''
-    main-lotteries: ''
-    
-    #delay between update checks, x minutes
-    update-delay: 60
-    
-    #used to format money through messages and signs
+
+    # buy message to send out when a player buys a ticket
+    # <player> - player who bought the tickets
+    # <tickets> - amount of tickets the player bought
+    # <lottery> - the lottery the player bought it from
+    buy-message: '&e<player> has bought <tickets> tickets for <lottery>'
+
+    # whether to enabled reminder message or not
+    reminder-enable: false
+
+    # whether to broadcast out the buy message or not
+    buy-enable: true
+
+    # delay bewtween lottery savings
+    save-delay: 1
+
+    # delay between update checks
+    update-delay: 1
+
+    # delay between reminder messages
+    reminder-message-delay: 1
+
+    # whether item rewards should drop on the ground near players or should it go in their inventory
+    should-drop: true
+
+    # the line separator used in messages
+    line-separator: '<newline>'
+
+    # the format used for money, must contain '<money>' in format
     money-format: '$<money>'
-    
+
+    # the lotteries that the user will be notified about when a player joins the server
+    main-lotteries: ''
+
+# sign formats
+#
+# normal - when the lottery is normally updating
+# drawing- when the lottery is drawing
+# over - when the lottery is over and is not set to repeat
+# 
+# format options: (NOTE: these can be used in the sign message as well)
+#
+# <name> - name of lottery
+# <time> - current time of lottery till drawing
+# <reward> - reward of the lottery
+# <winner> - most recent winner of the lottery
+# <ticketcost> - the ticket cost of the lottery
+# <ticket_tax> - ticket tax of the lottery
+# <pot_tax> - pot tax of the lottery
+# 
+# color codes can be used in the signs
+#
 signs:
     normal:
-        line1: <name>
-        line2: <time>
-        line3: <reward>
+        line1: '<name>'
+        line2: '<time>'
+        line3: '<reward>'
     drawing:
-        line3: <reward>
-        line2: Drawing...
-        line1: <name>
+        line1: '<reward>'
+        line2: 'Drawing...'
+        line3: '<name>'
     over:
-        line1: <name>
-        line2: Over
-        line3: <winner>
+        line1: '<name>'
+        line2: 'Over'
+        line3: '<winner>'
+
+# lottery defaults, these can be defined in any lottery,
+# though you can alter these where they affect every lottery
+defaults:
+
+    # time between drawings, x hours
+    time: 48
+
+    # max tickets a player can buy, set to negative for infinite limit
+    max-tickets: -1
+
+    # min players needed in order to draw the lottery
+    min-players: 2
+
+    # max players that is allows in the lottery, set to negative for infinite limit
+    max-players: 10
+
+    # time taken from the time when a player buys the ticket, x seconds
+    cooldown: 0
+
+    # seed used in the random
+    seed: 'LotteryPlus'
+
+    # item rewards that are added to the lottery
+    # defined examples: '35:3*64' - stack of light blue wool
+    item-rewards: ''
+
+    # whether this lottery has item rewards only or not
+    item-only: false
+
+    # whether this lottery should repeat after the next drawing
+    repeat: true
+
+    # the starting pot
+    pot: 1000.00
+
+    # cost of lottery tickets
+    ticket-cost: 10.00
+
+    # ticket tax used
+    # ex: 
+    # ticket-tax: 10.00
+    # ticket-cost: 50.00
+    #
+    # 10 tickets -> player pays 500.00, but 450.00 of it goes to the pot
+    #
+    ticket-tax: 0.0
+
+    # ticket tax used
+    # ex: 
+    # pot-tax: 10.00
+    # pot: 1000.00
+    #
+    # only 900.00 is awarded to the player 
+    #
+    pot-tax: 0.0
+
+    # amount added to ticket-cost after failed drawing
+    reset-add-ticket-cost: 0.00
+
+    # amount added to pot after failed drawing
+    reset-add-pot: 0.00
+
+    # amount added to ticket-tax after failed drawing
+    reset-add-ticket-tax: 0.00
+
+    # amount added to pot-tax after failed drawing
+    reset-add-pot-tax: 0.00
+
+    # amount added to max-tickets after failed drawing
+    reset-add-max-tickets: 0
+
+    # amount added to min-players after failed drawing
+    reset-add-min-players: 0
+
+    # amount added to max-players after failed drawing
+    reset-add-max-players: 0
+
+    # amount added to cooldown after failed drawing
+    reset-add-cooldown: 0
+
+    # amount added to time after failed drawing
+    reset-add-time: 0

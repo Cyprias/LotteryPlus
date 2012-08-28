@@ -37,6 +37,11 @@ public class DrawCommand implements Command {
 	}
 
 	public void listCommands(CommandSender sender, List<String> list) {
-		list.add("/%s draw <lottery name> - force draw a lottery");
+		if(Plugin.hasPermission(sender, Permission.DRAW))
+			list.add("/%s draw <lottery name> - force draw a lottery");
+	}
+	
+	public boolean hasValues() {
+		return true;
 	}
 }

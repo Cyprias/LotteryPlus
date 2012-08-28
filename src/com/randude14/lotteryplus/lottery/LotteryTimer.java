@@ -52,7 +52,7 @@ public class LotteryTimer implements TimeConstants {
 		return running;
 	}
 
-	public void countdown() {
+	public void onTick() {
 		if(!running && !isOver()) {
 			running = true;
 		}
@@ -60,12 +60,7 @@ public class LotteryTimer implements TimeConstants {
 		if (running) {
 			time--;
 			lottery.updateSigns();
-			if (isOver()) {
-				lottery.draw(null);
-			}
-			
 		}
-
 	}
 
 	public boolean isOver() {
@@ -82,5 +77,4 @@ public class LotteryTimer implements TimeConstants {
 				hours, min, sec);
 		return display;
 	}
-
 }

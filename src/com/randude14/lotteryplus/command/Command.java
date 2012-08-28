@@ -1,10 +1,8 @@
 package com.randude14.lotteryplus.command;
 
-import java.util.List;
-
 import org.bukkit.command.CommandSender;
 
-public interface Command {
+public interface Command extends Listable {
 	
 	boolean execute(CommandSender sender, org.bukkit.command.Command cmd, String[] args);
 	
@@ -12,6 +10,7 @@ public interface Command {
 	
 	void getCommands(CommandSender sender, org.bukkit.command.Command cmd);
 	
-	void listCommands(CommandSender sender, List<String> list);
+	//Temprary work around for commands that run with 0 args
+	boolean hasValues();
 
 }

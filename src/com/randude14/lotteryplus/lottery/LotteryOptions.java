@@ -12,21 +12,14 @@ public class LotteryOptions {
 	
 	public LotteryOptions(Map<String, Object> map) {
 		this.options.putAll(map);
-		for(Map.Entry<String, Object> entry : map.entrySet()) {
-			Object value = entry.getValue();
-			if(value instanceof String) {
-				String str = (String) value;
-				try {
-					int num = Integer.parseInt(str);
-					entry.setValue(num);
-				} catch (Exception ex) {
-				}
-			}
-		}
 	}
 	
 	public boolean contains(String key) {
 		return options.containsKey(key);
+	}
+	
+	public void remove(String key) {
+		options.remove(key);
 	}
 	
 	public <T> T get(Property<T> property, T value) {
@@ -46,8 +39,12 @@ public class LotteryOptions {
 		Object value = options.get(path);
 		if(value != null) {
 			try {
-				return clazz.cast(value);
+				if(clazz == Long.class) {
+					value = ((Number) value).longValue();
+				}
+			    return clazz.cast(value);
 			} catch (Exception ex) {
+				ex.printStackTrace();
 			}
 		}
 		return def;
@@ -65,7 +62,7 @@ public class LotteryOptions {
 		return options.keySet();
 	}
 	
-	public Map<String, Object> options() {
+	public Map<String, Object> getValues() {
 		return options;
 	}
 }

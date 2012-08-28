@@ -31,6 +31,10 @@ public class PotReward implements Reward {
 		return String.format("Pot Reward: %s", Utils.format(pot));
 	}
 	
+	public String toString() {
+		return String.format("[%s]", Utils.format(pot));
+	}
+	
 	public static PotReward deserialize(Map<String, Object> map) {
 		double pot = (Double) map.get("pot");
 		return new PotReward(pot);

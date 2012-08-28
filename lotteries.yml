@@ -9,3 +9,5 @@ lotteries:
 #       max-tickets: 10 - max tickets a player can buy
 #       min-players: 2 - min players for lottery to draw
 #       max-players: 10 - max players that can be in the lottery
+#
+#  NOTE: look at the defaults section of the config to see what else you can add to your lotteries

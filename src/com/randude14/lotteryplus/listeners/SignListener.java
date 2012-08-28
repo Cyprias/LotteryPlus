@@ -30,43 +30,34 @@ public class SignListener implements Listener, FormatOptions {
 
 	@EventHandler
 	public void onSignChange(SignChangeEvent event) {
-
 		if (event.isCancelled()) {
 			return;
 		}
-
 		Player player = event.getPlayer();
 		Block block = event.getBlock();
 		if(!Plugin.isSign(block)) 
 			return;
 		Sign sign = (Sign) block.getState();
 		String[] lines = event.getLines();
-
 		if (lines[0].equalsIgnoreCase("[Lottery+]")) {
-
 			if (!Plugin.hasPermission(player, Permission.SIGN_CREATE)) {
 				event.setCancelled(true);
 				return;
 			}
-
 			if (lines[1] == null || lines[1].equals("")) {
 				ChatUtils.error(player, "Must specify lottery.");
 				event.setCancelled(true);
 				return;
 			}
-
 			Lottery lottery = LotteryManager.getLottery(lines[1]);
-
 			if (lottery == null) {
 				ChatUtils.error(player, "%s does not exist.", lines[1]);
 				event.setCancelled(true);
 				return;
-			}
-			
+			}	
 			lottery.registerSign(sign);
-			ChatUtils.send(player, ChatColor.YELLOW, "Sign created for %s.", lottery.getName());
+			ChatUtils.send(player, ChatColor.YELLOW, "Sign created for %s%s.", ChatColor.GOLD, lottery.getName());
 		}
-
 	}
 
 	@EventHandler(priority = EventPriority.HIGH)
@@ -75,15 +66,12 @@ public class SignListener implements Listener, FormatOptions {
 		Location loc = event.getBlock().getLocation();
 		Block block = event.getBlock();
 		Player player = event.getPlayer();
-
 		if (event.isCancelled()) {
 			return;
 		}
-
 		if (!Plugin.isSign(block)) {
 			return;
 		}
-
 		for (Lottery lottery : lotteries) {
 
 			if (lottery.signAtLocation(loc)) {
@@ -92,65 +80,49 @@ public class SignListener implements Listener, FormatOptions {
 					event.setCancelled(true);
 					lottery.updateSigns();
 				}
-
 				else {
 					lottery.unregisterSign(loc);
-					ChatUtils.send(player, ChatColor.YELLOW, "Sign removed.");
+					ChatUtils.send(player, ChatColor.YELLOW, "Sign removed from %s%s.", ChatColor.GOLD, lottery.getName());
 				}
-
 			}
-
 		}
-
 	}
 
 	@EventHandler
-	public void playerRightClick(PlayerInteractEvent event) {
+	public void onPlayerInteract(PlayerInteractEvent event) {
 		List<Lottery> lotteries = LotteryManager.getLotteries();
 		Player player = event.getPlayer();
 		Block block = event.getClickedBlock();
 		String name = player.getName();
-
 		if (event.getAction() != Action.RIGHT_CLICK_BLOCK) {
 			return;
 		}
-
 		Location loc = block.getLocation();
-
 		for (Lottery lottery : lotteries) {
-
 			if (lottery.signAtLocation(loc)) {
 				event.setCancelled(true);
-
-				if (!Plugin.hasPermission(player, Permission.BUY)) {
-					ChatUtils.error(player, "You do not have permission");
+				if (!Plugin.checkPermission(player, Permission.BUY)) {
 					return;
 				}
-
 				if (Plugin.isBuyer(name)) {
 					Plugin.removeBuyer(name);
-					ChatUtils.error(player, "Transaction cancelled.");
-					ChatUtils.send(player, ChatColor.YELLOW, "---------------------------------------------------");
+					ChatUtils.errorRaw(player, "Transaction cancelled.");
+					ChatUtils.sendRaw(player, ChatColor.GOLD, "---------------------------------------------------");
 					return;
 				}
-
-				ChatUtils.send(player, ChatColor.YELLOW, "---------------------------------------------------");
+				ChatUtils.sendRaw(player, ChatColor.GOLD, "---------------------------------------------------");
 				String[] messages = getSignMessage(lottery);
-				for (String message : messages) {
-					player.sendMessage(message);
-				}
+				player.sendMessage(messages);
 				ChatUtils.send(player, "");
-				ChatUtils.send(player, "How many tickets would you like to buy?");
+				ChatUtils.sendRaw(player, ChatColor.YELLOW, "How many tickets would you like to buy?");
 				Plugin.addBuyer(player.getName(), lottery.getName());
 			}
-
 		}
-
 	}
 
 	private String[] getSignMessage(Lottery lottery) {
 		String signMessage = Config.getProperty(Config.SIGN_MESSAGE);
-		lottery.format(ChatUtils.replaceColorCodes(signMessage));
-		return signMessage.split("\\n");
+		signMessage = lottery.format(ChatUtils.replaceColorCodes(signMessage));
+		return signMessage.split(Config.getProperty(Config.LINE_SEPARATOR));
 	}
 }

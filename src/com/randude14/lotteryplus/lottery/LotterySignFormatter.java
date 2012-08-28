@@ -4,24 +4,14 @@ import org.bukkit.ChatColor;
 import org.bukkit.block.Sign;
 
 import com.randude14.lotteryplus.ChatUtils;
+import com.randude14.lotteryplus.configuration.Config;
 import com.randude14.lotteryplus.util.FormatOptions;
 import com.randude14.lotteryplus.util.SignFormatter;
 
 public class LotterySignFormatter implements SignFormatter, FormatOptions {
-	private final String[] normalArgs, drawingArgs, endArgs;
 	private final Lottery lottery;
 
-	public LotterySignFormatter(Lottery lottery, String[] normalArgs,
-			String[] drawingArgs, String[] endArgs) {
-
-		if (normalArgs.length != 3 || drawingArgs.length != 3
-				|| endArgs.length != 3) {
-			throw new IllegalArgumentException("All arguments must be length 3");
-		}
-
-		this.normalArgs = normalArgs;
-		this.drawingArgs = drawingArgs;
-		this.endArgs = endArgs;
+	public LotterySignFormatter(Lottery lottery) {
 		this.lottery = lottery;
 	}
 
@@ -29,21 +19,21 @@ public class LotterySignFormatter implements SignFormatter, FormatOptions {
 		sign.setLine(0, ChatColor.GREEN + "[Lottery+]");
 
 		if (lottery.isRunning()) {
-			sign.setLine(1, format(normalArgs[0]));
-			sign.setLine(2, format(normalArgs[1]));
-			sign.setLine(3, format(normalArgs[2]));
+			sign.setLine(1, format(Config.getProperty(Config.NORMAL_LINE_ONE)));
+			sign.setLine(2, format(Config.getProperty(Config.NORMAL_LINE_TWO)));
+			sign.setLine(3, format(Config.getProperty(Config.NORMAL_LINE_THREE)));
 		}
 
 		else if (lottery.isDrawing()) {
-			sign.setLine(1, format(drawingArgs[0]));
-			sign.setLine(2, format(drawingArgs[1]));
-			sign.setLine(3, format(drawingArgs[2]));
+			sign.setLine(1, format(Config.getProperty(Config.DRAWING_LINE_ONE)));
+			sign.setLine(2, format(Config.getProperty(Config.DRAWING_LINE_ONE)));
+			sign.setLine(3, format(Config.getProperty(Config.DRAWING_LINE_ONE)));
 		}
 
 		else {
-			sign.setLine(1, format(endArgs[0]));
-			sign.setLine(2, format(endArgs[1]));
-			sign.setLine(3, format(endArgs[2]));
+			sign.setLine(1, format(Config.getProperty(Config.OVER_LINE_ONE)));
+			sign.setLine(2, format(Config.getProperty(Config.OVER_LINE_ONE)));
+			sign.setLine(3, format(Config.getProperty(Config.OVER_LINE_ONE)));
 		}
 
 	}

@@ -20,7 +20,8 @@ public class CustomYaml {
 	public CustomYaml(String file, boolean load) {
 		configFile = new File(plugin.getDataFolder(), file);
 		config = new YamlConfiguration();
-		reloadConfig();
+		if(load)
+			this.reloadConfig();
 	}
 	
 	public void reloadConfig() {

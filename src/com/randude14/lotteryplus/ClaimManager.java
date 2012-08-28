@@ -2,6 +2,7 @@ package com.randude14.lotteryplus;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -18,6 +19,17 @@ import com.randude14.lotteryplus.lottery.Reward;
 import com.randude14.lotteryplus.util.CustomYaml;
 
 public class ClaimManager {
+	private static void saveClaims() {
+		FileConfiguration config = claimsConfig.getConfig();
+		config.createSection("claims"); // clean config
+		for(String player : claims.keySet()) {
+			int cntr = 0;
+			for(LotteryClaim claim : claims.get(player)) {
+				config.set("claims." + player + ".reward" + ++cntr, claim);
+			}
+		}
+		claimsConfig.saveConfig();
+	}
 	
 	public static void loadClaims() {
 		FileConfiguration config = claimsConfig.getConfig();
@@ -45,22 +57,33 @@ public class ClaimManager {
 			claims.put(name, new ArrayList<LotteryClaim>());
 		LotteryClaim claim = new LotteryClaim(lottery, rewards);
 		claims.get(name).add(claim);
-		FileConfiguration config = claimsConfig.getConfig();
-		ConfigurationSection playerSection = config.getConfigurationSection("claims." + name);
-		if(playerSection == null)
-			playerSection = config.createSection("claims." + name);
-		int cntr = 0;
-		while(playerSection.get("claim" + ++cntr) != null) {
-		}
-		playerSection.set("claim" + cntr, claim);
-		claimsConfig.saveConfig();
+		saveClaims();
 	}
 	
 	public static void rewardClaims(Player player) {
 		List<LotteryClaim> playerClaims = claims.get(player.getName());
-		int num = (playerClaims != null) ? playerClaims.size() : 0;
-		player.sendMessage(num + " claims found.");
+		if(playerClaims != null && !playerClaims.isEmpty()) {
+			while(!playerClaims.isEmpty()) {
+				LotteryClaim claim = playerClaims.remove(0);
+				ChatUtils.send(player, ChatColor.YELLOW, "Receiving rewards from %s%s...", ChatColor.GOLD, claim.getLotteryName());
+				Iterator<Reward> rewards = claim.iterator();
+				while(rewards.hasNext()) {
+					rewards.next().rewardPlayer(player);
+				}
+				ChatUtils.send(player, ChatColor.YELLOW, "Rewards received.", ChatColor.GOLD, claim.getLotteryName());
+			}
+			saveClaims();
+		} else {
+			ChatUtils.error(player, "You do not have any rewards to claim.");
+		}
 	}
+	
+	public static void notifyOfClaims(Player player) {
+		List<LotteryClaim> playerClaims = claims.get(player.getName());
+		if(playerClaims != null && !playerClaims.isEmpty()) {
+			ChatUtils.send(player, ChatColor.YELLOW, "You have recently won some lotteries! Type '/lottery claim' to claim your rewards!");
+		}
+	} 
 
 	private static final Map<String, List<LotteryClaim>> claims = new HashMap<String, List<LotteryClaim>>();
 	private static final CustomYaml claimsConfig;
@@ -71,11 +94,4 @@ public class ClaimManager {
 		ConfigurationSerialization.registerClass(PotReward.class);
 		claimsConfig = new CustomYaml("claims.yml");
 	}
-
-	public static void notifyOfClaims(Player player) {
-		List<LotteryClaim> playerClaims = claims.get(player.getName());
-		if(playerClaims != null && !playerClaims.isEmpty()) {
-			ChatUtils.send(player, ChatColor.YELLOW, "You have recently won some lotteries! Type '/lottery claim' to claim your rewards!");
-		}
-	} 
 }

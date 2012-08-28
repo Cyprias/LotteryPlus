@@ -1,11 +1,10 @@
 package com.randude14.lotteryplus;
 
 import java.io.File;
-import java.net.URL;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-
-import javax.xml.parsers.DocumentBuilderFactory;
 
 import net.milkbowl.vault.economy.Economy;
 
@@ -24,37 +23,30 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerChatEvent;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 
 import com.randude14.lotteryplus.command.*;
 import com.randude14.lotteryplus.configuration.Config;
 import com.randude14.lotteryplus.listeners.PlayerListener;
 import com.randude14.lotteryplus.listeners.SignListener;
 import com.randude14.lotteryplus.lottery.Lottery;
-import com.randude14.lotteryplus.tasks.ReminderMessageTask;
+import com.randude14.lotteryplus.tasks.*;
 import com.randude14.lotteryplus.util.CustomYaml;
 import com.randude14.lotteryplus.util.TimeConstants;
 
 public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 	private static Plugin instance = null;
 	private static final Map<String, String> buyers = new HashMap<String, String>();
+	private static final List<Task> tasks = new ArrayList<Task>();
 	private static net.milkbowl.vault.permission.Permission perm;
 	private static Economy econ;
 	public static final String CMD_LOTTERY = "lottery";
-	private String checkVersion;
 	private File configFile;
-	private static boolean reminderMessageEnabled;
-	private static int reminderId;
-	private int updateId = -1;
 
 	public void onEnable() {
 		instance = this;
@@ -78,103 +70,90 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 			Logger.warning("download is at 'http://dev.bukkit.org/server-mods/vault/'");
 			return;
 		}
-		
-
+		tasks.add(new ReminderMessageTask());
+		tasks.add(new SaveTask());
+		tasks.add(new UpdateCheckTask());
 		ClaimManager.loadClaims();
 		WinnersManager.loadWinners();
 		LotteryManager.loadLotteries();
-
-		if (this.isEnabled()) {
-			loadPermissions();
-			saveExtras();
-			registerListeners(this, new PlayerListener(), new SignListener());
-			checkVersion = getDescription().getVersion();
-			callTasks();
-			CommandManager cm = new CommandManager()
-			    .registerCommand("buy", new BuyCommand())
-				.registerCommand("draw", new DrawCommand());
-			//TODO add remaining commands
-			this.getCommand(CMD_LOTTERY).setExecutor(cm);
-			Logger.info("enabled.");
-		}
-
+		loadPermissions();
+		callTasks();
+		saveExtras();
+		registerListeners(this, new PlayerListener(), new SignListener());
+		Command atpCommand = new AddToPotCommand();
+		CommandManager cm = new CommandManager()
+		    .registerCommand("buy", new BuyCommand())
+		    .registerCommand("draw", new DrawCommand())
+		    .registerCommand("info", new InfoCommand())
+		    .registerCommand("claim", new ClaimCommand())
+		    .registerCommand("create", new CreateCommand())
+		    .registerCommand("reload", new ReloadCommand())
+		    .registerCommand("reloadall", new ReloadAllCommand())
+		    .registerCommand("load", new LoadCommand())
+		    .registerCommand("list", new ListCommand())
+		    .registerCommand("unload", new UnloadCommand())
+		    .registerCommand("addtopot", atpCommand)
+		    .registerCommand("atp", atpCommand)
+		    .registerCommand("winners", new WinnersCommand())
+		    .registerCommand("reward", new RewardCommand())
+		    .registerCommand("save", new SaveCommand())
+		    .registerCommand("config", new ConfigCommand())
+		    .registerCommand("version", new VersionCommand());
+		this.getCommand("lottery").setExecutor(cm);
+		scheduleAsyncRepeatingTask(new LotteryManager.TimerTask(), 20L, 20L);
+		Logger.info("enabled.");
 	}
-
-	private void callTasks() {
-		if (Config.getProperty(Config.REMINDER_ENABLE)) {
-			long delayAutoMessenger = MINUTE * SERVER_SECOND
-					* Config.getProperty(Config.REMINDER_MESSAGE_TIME);
-			reminderId = scheduleSyncRepeatingTask(new ReminderMessageTask(),
-					delayAutoMessenger, delayAutoMessenger);
-			reminderMessageEnabled = true;
-		}
-		if (updateId == -1) {
-			long delayUpdate = MINUTE * SERVER_SECOND * Config.getProperty(Config.UPDATE_DELAY);
-			updateId = scheduleSyncRepeatingTask(
-					new Runnable() {
-						public void run() {
-							String currentVersion = updateCheck(checkVersion);
-							if (!currentVersion.endsWith(checkVersion)) {
-								Logger.info("there is a new version of %s: %s (you are running v%s)");
-							}
-
-						}
-					}, 0, delayUpdate);
-		}
-		//TODO add save task
+	
+	public void onDisable() {
+		Logger.info("disabled.");
+		getServer().getScheduler().cancelTasks(this);
+		LotteryManager.saveLotteries();
+		instance = null;
+		econ = null;
+		perm = null;
 	}
-
+	
 	private void loadPermissions() {
 		PluginManager pm = Bukkit.getPluginManager();
 		for (Permission permission : Permission.values()) {
 			permission.loadPermission(pm);
 		}
 	}
-	
+
 	private void saveExtras() {
 		CustomYaml enchants = new CustomYaml("enchantments.yml", false);
 		FileConfiguration enchantsConfig = enchants.getConfig();
-		for(Enchantment enchant : Enchantment.values()) {
-			enchantsConfig.set("enchantments." + enchant.getName(), String.format("%d-%d", enchant.getStartLevel(), enchant.getMaxLevel()));
+		for (Enchantment enchant : Enchantment.values()) {
+			enchantsConfig.set(
+					"enchantments." + enchant.getName(),
+					String.format("%d-%d", enchant.getStartLevel(),
+							enchant.getMaxLevel()));
 		}
 		enchants.saveConfig();
 		CustomYaml items = new CustomYaml("items.yml", false);
 		FileConfiguration itemsConfig = items.getConfig();
-		for(Material mat : Material.values()) {
+		for (Material mat : Material.values()) {
 			itemsConfig.set("items." + mat.name(), mat.getId());
 		}
 		items.saveConfig();
 		CustomYaml colors = new CustomYaml("colors.yml", false);
 		FileConfiguration colorsConfig = colors.getConfig();
-		for(ChatColor color : ChatColor.values()) {
-			colorsConfig.set("colors." + color.name(), Character.toString(color.getChar()));
+		for (ChatColor color : ChatColor.values()) {
+			colorsConfig.set("colors." + color.name(),
+					Character.toString(color.getChar()));
 		}
 		colors.saveConfig();
+	}
+	
+	private static void callTasks() {
+		for(Task task : tasks) {
+			task.scheduleTask();
+		}
 	}
 
 	public static void reload() {
 		instance.reloadConfig();
-		if (!reminderMessageEnabled) {
-			long delayAutoMessenger = MINUTE * SERVER_SECOND
-					* Config.getProperty(Config.REMINDER_MESSAGE_TIME);
-			reminderId = Plugin.scheduleSyncRepeatingTask(new ReminderMessageTask(), 
-					delayAutoMessenger, delayAutoMessenger);
-			reminderMessageEnabled = true;
-		}
-
-		else {
-
-			if (!Config.getProperty(Config.REMINDER_ENABLE)) {
-				instance.getServer().getScheduler().cancelTask(reminderId);
-			}
-
-		}
-
-	}
-
-	public void onDisable() {
-		getServer().getScheduler().cancelTasks(this);
-		Logger.info("disabled.");
+		callTasks();
 	}
 
 	private void registerListeners(Listener... listeners) {
@@ -183,7 +162,6 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 		for (Listener listener : listeners) {
 			manager.registerEvents(listener, this);
 		}
-
 	}
 
 	private static boolean setupEconomy() {
@@ -270,12 +248,15 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 		buyers.remove(name);
 	}
 
+	
+	// remove buyers when the leave
 	@EventHandler(priority = EventPriority.MONITOR)
 	public void onPlayerQuit(PlayerQuitEvent event) {
 		String name = event.getPlayer().getName();
 		buyers.remove(name);
 	}
 
+	// remove buyers when they get kicked
 	@EventHandler(priority = EventPriority.MONITOR)
 	public void onPlayerKick(PlayerKickEvent event) {
 		String name = event.getPlayer().getName();
@@ -283,7 +264,7 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 	}
 
 	@EventHandler
-	public void onPlayerChat(PlayerChatEvent event) {
+	public void onPlayerChat(AsyncPlayerChatEvent event) {
 		Player player = event.getPlayer();
 		String name = player.getName();
 		String chat = event.getMessage();
@@ -299,66 +280,68 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 				try {
 					tickets = Integer.parseInt(chat);
 				} catch (Exception ex) {
-					ChatUtils.error(player, "Invalid number");
-					ChatUtils.send(player, "Transaction cancelled");
-					ChatUtils.send(player, ChatColor.YELLOW, "---------------------------------------------------");
+					ChatUtils.errorRaw(player, "Invalid number");
+					ChatUtils.errorRaw(player, "Transaction cancelled");
+					ChatUtils
+							.sendRaw(player, ChatColor.GOLD,
+									"---------------------------------------------------");
 					event.setCancelled(true);
 					return;
 				}
 
 				if (tickets <= 0) {
-					ChatUtils.error(player, String.format("Tickets cannot be negative."));
-					ChatUtils.error(player, "Transaction cancelled");
-					ChatUtils.send(player, ChatColor.YELLOW, "---------------------------------------------------");
+					ChatUtils.errorRaw(player,
+							String.format("Tickets must be positive."));
+					ChatUtils.errorRaw(player, "Transaction cancelled");
+					ChatUtils
+							.sendRaw(player, ChatColor.GOLD,
+									"---------------------------------------------------");
 					return;
 				}
 
-				if(lottery.buyTickets(player, tickets)) {
-					ChatUtils.error(player, "Transaction completed");
-					ChatUtils.send(player, ChatColor.YELLOW, "---------------------------------------------------");
+				if (lottery.buyTickets(player, tickets)) {
+					ChatUtils.sendRaw(player, ChatColor.GREEN, "Transaction completed");
+					ChatUtils
+							.sendRaw(player, ChatColor.GOLD,
+									"---------------------------------------------------");
 					String message = Config.getProperty(Config.BUY_MESSAGE);
-					message.replace("<player>", name).replace("<tickets>", "" + tickets).replace("<lottery>", lottery.getName());
+					message = message.replace("<player>", name)
+							.replace("<ticket>", "" + tickets)
+							.replace("<lottery>", lottery.getName());
 					ChatUtils.broadcast(message);
-				}
-				else {
-					ChatUtils.error(player, "Transaction cancelled");
-					ChatUtils.send(player, ChatColor.YELLOW, "---------------------------------------------------");
+					if(lottery.isOver()) {
+						lottery.draw();
+					}
+				} else {
+					ChatUtils.errorRaw(player, "Transaction cancelled");
+					ChatUtils
+							.sendRaw(player, ChatColor.GOLD,
+									"---------------------------------------------------");
 				}
 			}
 
 			else {
-				ChatUtils.error(player, "%s has been removed for unknown reasons", lotteryName);
-				ChatUtils.error(player, "Transaction cancelled");
-				ChatUtils.send(player, ChatColor.YELLOW, "---------------------------------------------------");
+				ChatUtils.errorRaw(player,
+						"%s has been removed for unknown reasons", lotteryName);
+				ChatUtils.sendRaw(player, ChatColor.GREEN, "Transaction cancelled");
+				ChatUtils.sendRaw(player, ChatColor.GOLD,
+						"---------------------------------------------------");
 			}
-
 		}
-
+	}
+	
+	public static int scheduleAsyncRepeatingTask(Runnable runnable,
+			long initialDelay, long reatingDelay) {
+		return instance
+				.getServer()
+				.getScheduler()
+				.scheduleAsyncRepeatingTask(instance, runnable, initialDelay,
+						reatingDelay);
 	}
 
-	private String updateCheck(String currentVersion) {
-		try {
-			URL url = new URL(
-					"http://dev.bukkit.org/server-mods/lotteryplus/files.rss");
-			Document doc = DocumentBuilderFactory.newInstance()
-					.newDocumentBuilder()
-					.parse(url.openConnection().getInputStream());
-			doc.getDocumentElement().normalize();
-			NodeList nodes = doc.getElementsByTagName("item");
-			Node firstNode = nodes.item(0);
-			if (firstNode.getNodeType() == 1) {
-				Element firstElement = (Element) firstNode;
-				NodeList firstElementTagName = firstElement
-						.getElementsByTagName("title");
-				Element firstNameElement = (Element) firstElementTagName
-						.item(0);
-				NodeList firstNodes = firstNameElement.getChildNodes();
-				return firstNodes.item(0).getNodeValue();
-			}
-		} catch (Exception ex) {
-		}
-
-		return currentVersion;
+	public static int scheduleAsyncDelayedTask(Runnable runnable, long delay) {
+		return instance.getServer().getScheduler()
+				.scheduleAsyncDelayedTask(instance, runnable, delay);
 	}
 
 	public static int scheduleSyncRepeatingTask(Runnable runnable,
@@ -369,13 +352,18 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 				.scheduleSyncRepeatingTask(instance, runnable, initialDelay,
 						reatingDelay);
 	}
-	
-	public static int scheduleSyncDelayedTask(Runnable runnable,
-			long delay) {
-		return instance
-				.getServer()
-				.getScheduler()
+
+	public static int scheduleSyncDelayedTask(Runnable runnable, long delay) {
+		return instance.getServer().getScheduler()
 				.scheduleSyncDelayedTask(instance, runnable, delay);
+	}
+	
+	public static void cancelTask(int taskId) {
+		instance.getServer().getScheduler().cancelTask(taskId);
+	}
+	
+	public static String getVersion() {
+		return instance.getDescription().getVersion();
 	}
 
 	public static boolean isSign(Block block) {

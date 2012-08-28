@@ -22,6 +22,10 @@ public class BuyCommand implements Command {
 			return ChatUtils.sendCommandHelp(sender, Permission.BUY, "/%s buy <lottery name> <x tickets> - buy tickets for a lottery", cmd);
 		}
 		Lottery lottery = LotteryManager.getLottery(args[0].toLowerCase());
+		if(lottery == null) {
+			ChatUtils.error(sender, "%s does not exist", args[0]);
+			return false;
+		}
 		int tickets;
 		try {
 			tickets = Integer.parseInt(args[1]);
@@ -32,9 +36,12 @@ public class BuyCommand implements Command {
 		if(lottery.buyTickets((Player) sender, tickets)) {
 			String message = Config.getProperty(Config.BUY_MESSAGE)
 					.replace("<player>", sender.getName())
-					.replace("<tickets>", "" + tickets)
+					.replace("<ticket>", "" + tickets)
 					.replace("<lottery>", lottery.getName());
 			ChatUtils.broadcast(message);
+			if(lottery.isOver()) {
+				lottery.draw();
+			}
 		}
 		return true;
 	}
@@ -50,5 +57,9 @@ public class BuyCommand implements Command {
 	
 	public void getCommands(CommandSender sender, org.bukkit.command.Command cmd) {
 		ChatUtils.sendCommandHelp(sender, Permission.BUY, "/%s buy <lottery name> <x tickets> - buy tickets for a lottery", cmd);
+	}
+	
+	public boolean hasValues() {
+		return true;
 	}
 }
