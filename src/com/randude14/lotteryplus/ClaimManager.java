@@ -2,7 +2,6 @@ package com.randude14.lotteryplus;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -13,7 +12,9 @@ import org.bukkit.configuration.serialization.ConfigurationSerialization;
 import org.bukkit.entity.Player;
 
 import com.randude14.lotteryplus.lottery.ItemReward;
+import com.randude14.lotteryplus.lottery.Lottery;
 import com.randude14.lotteryplus.lottery.LotteryClaim;
+import com.randude14.lotteryplus.lottery.PickItemReward;
 import com.randude14.lotteryplus.lottery.PotReward;
 import com.randude14.lotteryplus.lottery.Reward;
 import com.randude14.lotteryplus.util.CustomYaml;
@@ -65,12 +66,7 @@ public class ClaimManager {
 		if(playerClaims != null && !playerClaims.isEmpty()) {
 			while(!playerClaims.isEmpty()) {
 				LotteryClaim claim = playerClaims.remove(0);
-				ChatUtils.send(player, ChatColor.YELLOW, "Receiving rewards from %s%s...", ChatColor.GOLD, claim.getLotteryName());
-				Iterator<Reward> rewards = claim.iterator();
-				while(rewards.hasNext()) {
-					rewards.next().rewardPlayer(player);
-				}
-				ChatUtils.send(player, ChatColor.YELLOW, "Rewards received.", ChatColor.GOLD, claim.getLotteryName());
+				Lottery.handleRewards(claim.getRewards(), player);
 			}
 			saveClaims();
 		} else {
@@ -92,6 +88,7 @@ public class ClaimManager {
 		ConfigurationSerialization.registerClass(LotteryClaim.class);
 		ConfigurationSerialization.registerClass(ItemReward.class);
 		ConfigurationSerialization.registerClass(PotReward.class);
+		ConfigurationSerialization.registerClass(PickItemReward.class);
 		claimsConfig = new CustomYaml("claims.yml");
 	}
 }

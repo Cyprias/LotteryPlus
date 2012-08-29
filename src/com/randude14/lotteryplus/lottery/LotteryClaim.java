@@ -27,6 +27,10 @@ public class LotteryClaim implements ConfigurationSerializable, Iterable<Reward>
 		return rewards.iterator();
 	}
 	
+	public List<Reward> getRewards() {
+		return rewards;
+	}
+	
 	public Map<String, Object> serialize() {
 		Map<String, Object> serialMap = new HashMap<String, Object>();
 		serialMap.put("lottery-name", lotteryName);

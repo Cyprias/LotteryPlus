@@ -1,10 +1,13 @@
 package com.randude14.lotteryplus;
 
 import java.io.File;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import javax.xml.parsers.DocumentBuilderFactory;
 
 import net.milkbowl.vault.economy.Economy;
 
@@ -13,27 +16,38 @@ import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 import com.randude14.lotteryplus.command.*;
 import com.randude14.lotteryplus.configuration.Config;
 import com.randude14.lotteryplus.listeners.PlayerListener;
 import com.randude14.lotteryplus.listeners.SignListener;
+import com.randude14.lotteryplus.lottery.ItemReward;
 import com.randude14.lotteryplus.lottery.Lottery;
 import com.randude14.lotteryplus.tasks.*;
 import com.randude14.lotteryplus.util.CustomYaml;
@@ -41,6 +55,7 @@ import com.randude14.lotteryplus.util.TimeConstants;
 
 public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 	private static Plugin instance = null;
+	private static final Map<InventoryHolder, Inventory> inventories = new HashMap<InventoryHolder, Inventory>();
 	private static final Map<String, String> buyers = new HashMap<String, String>();
 	private static final List<Task> tasks = new ArrayList<Task>();
 	private static net.milkbowl.vault.permission.Permission perm;
@@ -75,7 +90,12 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 		tasks.add(new UpdateCheckTask());
 		ClaimManager.loadClaims();
 		WinnersManager.loadWinners();
-		LotteryManager.loadLotteries();
+		int numLotteries = LotteryManager.loadLotteries();
+		if(numLotteries == 1) {
+			Logger.info("1 lottery was loaded.");
+		} else {
+			Logger.info("%d lotteries were loaded.", numLotteries);
+		}
 		loadPermissions();
 		callTasks();
 		saveExtras();
@@ -98,7 +118,8 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 		    .registerCommand("reward", new RewardCommand())
 		    .registerCommand("save", new SaveCommand())
 		    .registerCommand("config", new ConfigCommand())
-		    .registerCommand("version", new VersionCommand());
+		    .registerCommand("version", new VersionCommand())
+		    .registerCommand("update", new UpdateCommand());
 		this.getCommand("lottery").setExecutor(cm);
 		scheduleAsyncRepeatingTask(new LotteryManager.TimerTask(), 20L, 20L);
 		Logger.info("enabled.");
@@ -304,11 +325,11 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 					ChatUtils
 							.sendRaw(player, ChatColor.GOLD,
 									"---------------------------------------------------");
-					String message = Config.getProperty(Config.BUY_MESSAGE);
+					String message = Config.getString(Config.BUY_MESSAGE);
 					message = message.replace("<player>", name)
-							.replace("<ticket>", "" + tickets)
+							.replace("<tickets>", "" + tickets)
 							.replace("<lottery>", lottery.getName());
-					ChatUtils.broadcast(message);
+					ChatUtils.broadcastRaw(message);
 					if(lottery.isOver()) {
 						lottery.draw();
 					}
@@ -324,9 +345,16 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 				ChatUtils.errorRaw(player,
 						"%s has been removed for unknown reasons", lotteryName);
 				ChatUtils.sendRaw(player, ChatColor.GREEN, "Transaction cancelled");
-				ChatUtils.sendRaw(player, ChatColor.GOLD,
-						"---------------------------------------------------");
+				ChatUtils.sendRaw(player, ChatColor.GOLD, "---------------------------------------------------");
 			}
+		}
+	}
+	@EventHandler(priority = EventPriority.MONITOR)
+	public void onInventoryClose(InventoryCloseEvent event) {
+		HumanEntity entity = event.getPlayer();
+		Inventory inventory = inventories.get(entity);
+		if(inventory != null) {
+			dropItems(inventory.getContents(), entity.getLocation());
 		}
 	}
 	
@@ -351,6 +379,66 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 				.getScheduler()
 				.scheduleSyncRepeatingTask(instance, runnable, initialDelay,
 						reatingDelay);
+	}
+	
+	public static void openInventory(List<ItemReward> rewards, Player player) {
+		int invSize = getSize(rewards.size());
+		Inventory inventory = Bukkit.createInventory(player, invSize, "Item Rewards");
+		for(ItemReward reward : rewards) {
+			inventory.addItem(reward.getItem());
+		}
+		player.openInventory(inventory);
+		inventories.put(player, inventory);
+	}
+	
+	private static void dropItems(ItemStack[] contents, Location loc) {
+		World world = loc.getWorld();
+		for(ItemStack item : contents) {
+			if(item != null && item.getType() == Material.AIR) {
+				world.dropItem(loc, item);
+			}
+		}
+	}
+	
+	private static int getSize(int size) {
+		int invSize = 9;
+		while(invSize < size) {
+			invSize += 9;
+		}
+		return (invSize > 54) ? 54 : invSize;
+	}
+	
+	public static void updateCheck(String currentVersion) {
+		updateCheck(Bukkit.getConsoleSender(), currentVersion);
+	}
+	
+	public static void updateCheck(CommandSender sender, String currentVersion) {
+		String latestVersion = currentVersion;
+		try {
+			URL url = new URL("http://dev.bukkit.org/server-mods/lotteryplus/files.rss");
+			Document doc = DocumentBuilderFactory.newInstance()
+					.newDocumentBuilder()
+					.parse(url.openConnection().getInputStream());
+			doc.getDocumentElement().normalize();
+			NodeList nodes = doc.getElementsByTagName("item");
+			Node firstNode = nodes.item(0);
+			if (firstNode.getNodeType() == 1) {
+				Element firstElement = (Element) firstNode;
+				NodeList firstElementTagName = firstElement
+						.getElementsByTagName("title");
+				Element firstNameElement = (Element) firstElementTagName
+						.item(0);
+				NodeList firstNodes = firstNameElement.getChildNodes();
+				latestVersion = firstNodes.item(0).getNodeValue();
+			}
+		} catch (Exception ex) {
+			latestVersion = currentVersion;
+		}
+		if(!latestVersion.endsWith(currentVersion)) {
+			ChatUtils.send(sender, ChatColor.YELLOW, "New version available: Current version: %s, Latest version: %s.", currentVersion, latestVersion);
+		} else {
+			ChatUtils.error(sender, "No updates available.");
+		}
 	}
 
 	public static int scheduleSyncDelayedTask(Runnable runnable, long delay) {

@@ -20,11 +20,13 @@ public enum Permission {
 	LOAD("lottery.admin.load", "You do not have permission to load lotteries."),
 	UNLOAD("lottery.admin.unload", "You do not have permission to unload lotteries."),
 	FORCE_SAVE("lottery.admin.save", "You do not have permission to force save lotteries."),
+	UPDATE("lottery.admin.update", "You do not have permission to check for updates."),
 	SIGN_CREATE("lottery.sign.create", "You do not have permission to create signs."),
 	SIGN_REMOVE("lottery.sign.remove", "You do not have permission to remove signs."),
+	SIGN_USE("lottery.sign", "You do not have permission to use signs."),
 	PARENT_BASIC("lottery.basic.*", LIST, INFO, BUY, ADD_TO_POT, CLAIM, WINNERS),
-	PARENT_ADMIN("lottery.admin.*", REWARD, DRAW, RELOAD, RELOAD_ALL, LOAD, UNLOAD),
-	PARENT_SIGN("lottery.sign.*", SIGN_CREATE, SIGN_REMOVE),
+	PARENT_ADMIN("lottery.admin.*", REWARD, DRAW, RELOAD, RELOAD_ALL, LOAD, UNLOAD, UPDATE),
+	PARENT_SIGN("lottery.sign.*", SIGN_CREATE, SIGN_REMOVE, SIGN_USE),
 	SUPER_PERM("lottery.*", PARENT_BASIC, PARENT_ADMIN, PARENT_SIGN);
 	
 	private Permission(String value, Permission... childrenArray) {

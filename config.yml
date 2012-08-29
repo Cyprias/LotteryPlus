@@ -4,75 +4,76 @@
 properties:
 
     # reminder message to send out
-    reminder-message: '&eDont forget to check your servers lotteries. Type /lottery list to list lotteries.'
+    reminder-message: '&e[Lottery+] - Dont forget to check your servers lotteries. Type /lottery list to list lotteries.'
 
     # sign message to send when users use signs
+    #
+    # <name> - name of the lottery
+    # <ticketcost> - cost of a ticket for the lottery
+    # <reward> - reward of the lottery
+    # <time> - time until drawing
+    # <winner> - most recent winner of the lottery
+    # <ticket_tax> - ticket tax of the lottery
+    # <pot_tax> - pot tax of the lottery
+    #
     sign-message: '&eName: <name><newline>&eTicket Cost: <ticketcost>'
+    
+    # message to send to players about the main lotteries
+    #
+    # <name> - name of the lottery
+    # <ticketcost> - cost of a ticket for the lottery
+    # <reward> - reward of the lottery
+    # <time> - time until drawing
+    # <winner> - most recent winner of the lottery
+    # <ticket_tax> - ticket tax of the lottery
+    # <pot_tax> - pot tax of the lottery
+    #
+    main-lotteries-message: '&e[Lottery+] - <name>: Time Left: <time>, Reward: <reward>'
 
     # buy message to send out when a player buys a ticket
+    #
     # <player> - player who bought the tickets
     # <tickets> - amount of tickets the player bought
     # <lottery> - the lottery the player bought it from
+    #
     buy-message: '&e<player> has bought <tickets> tickets for <lottery>'
-
-    # whether to enabled reminder message or not
-    reminder-enable: false
 
     # whether to broadcast out the buy message or not
     buy-enable: true
 
-    # delay bewtween lottery savings
-    save-delay: 1
+    # delay betwween lottery savings, x minutes: set to 0 or less to disable, can also use '/lottery save' to force save lotteries
+    save-delay: 15
 
-    # delay between update checks
-    update-delay: 1
+    # delay between update checks, x minutes: set to 0 or less to disable, can also use '/lottery update' to check on updates
+    update-delay: 30
 
-    # delay between reminder messages
-    reminder-message-delay: 1
+    # delay between reminder messages, x minutes: set to 0 or less to disable
+    reminder-message-delay: 10
 
     # whether item rewards should drop on the ground near players or should it go in their inventory
     should-drop: true
+    
+    # whether to log lottery savings or not
+    should-log: false
 
     # the line separator used in messages
     line-separator: '<newline>'
 
     # the format used for money, must contain '<money>' in format
     money-format: '$<money>'
+    
+    # sign tag used for lottery signs, can have color codes
+    sign-tag: '&a[Lottery+]'
+    
+    # prefix used in chat, can have color codes
+    chat-prefix: '&e[LotteryPlus] - '
 
     # the lotteries that the user will be notified about when a player joins the server
+    # ex: 'MAIN1 MAIN2 MAIN3', ect...
     main-lotteries: ''
+    
 
-# sign formats
-#
-# normal - when the lottery is normally updating
-# drawing- when the lottery is drawing
-# over - when the lottery is over and is not set to repeat
-# 
-# format options: (NOTE: these can be used in the sign message as well)
-#
-# <name> - name of lottery
-# <time> - current time of lottery till drawing
-# <reward> - reward of the lottery
-# <winner> - most recent winner of the lottery
-# <ticketcost> - the ticket cost of the lottery
-# <ticket_tax> - ticket tax of the lottery
-# <pot_tax> - pot tax of the lottery
-# 
-# color codes can be used in the signs
-#
-signs:
-    normal:
-        line1: '<name>'
-        line2: '<time>'
-        line3: '<reward>'
-    drawing:
-        line1: '<reward>'
-        line2: 'Drawing...'
-        line3: '<name>'
-    over:
-        line1: '<name>'
-        line2: 'Over'
-        line3: '<winner>'
+
 
 # lottery defaults, these can be defined in any lottery,
 # though you can alter these where they affect every lottery
@@ -90,14 +91,16 @@ defaults:
     # max players that is allows in the lottery, set to negative for infinite limit
     max-players: 10
 
-    # time taken from the time when a player buys the ticket, x seconds
+    # time taken from the lottery when a player buys the ticket, x seconds
     cooldown: 0
 
-    # seed used in the random
+    # seed used for the random generator
     seed: 'LotteryPlus'
 
     # item rewards that are added to the lottery
     # defined examples: '35:3*64' - stack of light blue wool
+    # format -> 'materialID:meta_data*amount'
+    # more examples: '351:0*1 351:1*1 351:2*1'
     item-rewards: ''
 
     # whether this lottery has item rewards only or not
@@ -156,3 +159,6 @@ defaults:
 
     # amount added to time after failed drawing
     reset-add-time: 0
+    
+    # items add after failed drawing, defined the same way as 'item-rewards'
+    reset-add-item-rewards: ''

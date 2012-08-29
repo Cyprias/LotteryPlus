@@ -1,9 +1,11 @@
 package com.randude14.lotteryplus.command;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
+import java.util.Set;
+import java.util.TreeSet;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.bukkit.ChatColor;
@@ -15,7 +17,7 @@ import com.randude14.lotteryplus.Plugin;
 
 public class CommandManager implements CommandExecutor, Listable {
 	private static final Plugin plugin = Plugin.getInstance();
-	private final Map<String, Command> commands = new TreeMap<String, Command>(String.CASE_INSENSITIVE_ORDER);
+	private final Map<String, Command> commands = new HashMap<String, Command>();
 
 	public CommandManager() {
 
@@ -94,6 +96,10 @@ public class CommandManager implements CommandExecutor, Listable {
 			if(command.getAccess().hasAccess(sender))
 				command.listCommands(sender, list);
 		}
+		Set<String> set = new TreeSet<String>();
+		set.addAll(list);
+		list.clear();
+		list.addAll(set);
 	}
 	
     protected void getCommands(CommandSender sender, Listable listable, org.bukkit.command.Command cmd) {

@@ -8,17 +8,17 @@ public class ReminderMessageTask implements Task {
 	private int updateId = -1;
 	
 	public void run() {
-		String reminderMessage = Config.getProperty(Config.REMINDER_MESSAGE);
-		ChatUtils.broadcast(reminderMessage);
+		String reminderMessage = Config.getString(Config.REMINDER_MESSAGE);
+		ChatUtils.broadcastRaw(reminderMessage);
 	}
 
 	public void scheduleTask() {
-		if(!Config.getProperty(Config.REMINDER_ENABLE)) {
-			Plugin.cancelTask(updateId);
+		long delay = Config.getLong(Config.REMINDER_MESSAGE_TIME);
+		Plugin.cancelTask(updateId);
+		if(delay <= 0) {
 			return;
 		}
-		Plugin.cancelTask(updateId);
-		long delay = Config.getProperty(Config.REMINDER_MESSAGE_TIME) * SERVER_SECOND * MINUTE;
+		delay *= SERVER_SECOND * MINUTE;
 		updateId = Plugin.scheduleSyncRepeatingTask(this, delay, delay);
 	}
 }

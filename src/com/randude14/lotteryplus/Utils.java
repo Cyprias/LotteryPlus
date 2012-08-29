@@ -25,7 +25,7 @@ public class Utils {
 	}
 	
 	public static String format(double d) {
-		String format = Config.getProperty(Config.MONEY_FORMAT);
+		String format = Config.getString(Config.MONEY_FORMAT);
 		return format.replace("<money>", String.format("%,.2f", d));
 	}
 	

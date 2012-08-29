@@ -3,7 +3,7 @@ main: com.randude14.lotteryplus.Plugin
 depend: [Vault]
 authors: [Randude14]
 description: 'Powerful and funtional lottery interface that makes lotteries easy to make and fun to play!'
-version: 0.7.4
+version: 0.7.5
 commands: 
     lottery: 
         description: basic command

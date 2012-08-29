@@ -2,6 +2,7 @@ package com.randude14.lotteryplus.command;
 
 import java.util.List;
 
+import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
 
@@ -20,15 +21,18 @@ public class RewardCommand implements Command {
 		if(args.length < 3) {
 			return ChatUtils.sendCommandHelp(sender, Permission.DRAW, "/%s reward <player> <lottery name> <x tickets> - reward a player tickets", cmd);
 		}
-		OfflinePlayer player = Plugin.getOfflinePlayer(args[0]);
 		Lottery lottery = LotteryManager.getLottery(args[1]);
 		if(lottery == null) {
 			ChatUtils.error(sender, "%s does not exist.", args[1]);
 			return false;
 		}
+		OfflinePlayer player = Plugin.getOfflinePlayer(args[0]);
+		String name = player.getName();
 		try {
 			int tickets = Integer.parseInt(args[2]);
-			lottery.rewardPlayer(player.getName(), tickets);
+			lottery.rewardPlayer(name, tickets);
+			ChatUtils.send(sender, ChatColor.GOLD, "%s %shas been rewarded %s%d ticket(s) %sfor %s%s", 
+					name, ChatColor.YELLOW, ChatColor.GOLD, tickets, ChatColor.YELLOW, ChatColor.GOLD, lottery.getName());
 			return true;
 		} catch (Exception ex) {
 			ChatUtils.error(sender, "Invalid int.");

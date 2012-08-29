@@ -7,16 +7,23 @@ import com.randude14.lotteryplus.configuration.Config;
 
 public class SaveTask implements Task {
 	private int updateId = -1;
-	
+
 	public void run() {
-		Logger.info("Force saving lotteries...");
+		boolean flag = Config.getBoolean(Config.SHOULD_LOG);
+		if (flag)
+			Logger.info("Force saving lotteries...");
 		LotteryManager.saveLotteries();
-		Logger.info("lotteries saved.");
+		if (flag)
+			Logger.info("lotteries saved.");
 	}
 
 	public void scheduleTask() {
+		long delay = Config.getLong(Config.SAVE_DELAY);
 		Plugin.cancelTask(updateId);
-		long delay = Config.getProperty(Config.SAVE_DELAY) * SERVER_SECOND * MINUTE;
+		if (delay <= 0) {
+			return;
+		}
+		delay *= SERVER_SECOND * MINUTE;
 		updateId = Plugin.scheduleSyncRepeatingTask(this, delay, delay);
 	}
 }

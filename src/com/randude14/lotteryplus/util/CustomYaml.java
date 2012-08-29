@@ -1,6 +1,7 @@
 package com.randude14.lotteryplus.util;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -27,16 +28,20 @@ public class CustomYaml {
 	public void reloadConfig() {
 		try {
 			config.load(configFile);
+		} catch (FileNotFoundException ex) {
 		} catch (Exception ex) {
 			Logger.info("Could not load config for '%s'", configFile.getName());
+			ex.printStackTrace();
 		}
 	}
 	
 	public void saveConfig() {
 		try {
 			config.save(configFile);
+		} catch (FileNotFoundException ex) {
 		} catch (Exception ex) {
 			Logger.info("Could not save config for '%s'", configFile.getName());
+			ex.printStackTrace();
 		}
 	}
 	

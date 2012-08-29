@@ -6,6 +6,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 
+import com.randude14.lotteryplus.ChatUtils;
 import com.randude14.lotteryplus.ClaimManager;
 import com.randude14.lotteryplus.LotteryManager;
 import com.randude14.lotteryplus.configuration.Config;
@@ -17,12 +18,14 @@ public class PlayerListener implements Listener {
 	public void onPlayerJoin(PlayerJoinEvent event) {
 		Player player = event.getPlayer();
 		ClaimManager.notifyOfClaims(player);
-		String[] mainLotteries = Config.getProperty(Config.MAIN_LOTTERIES).split("\\s+");
+		String[] mainLotteries = Config.getString(Config.MAIN_LOTTERIES).split("\\s+");
 		for(String lotteryName : mainLotteries) {
 			Lottery lottery = LotteryManager.getLottery(lotteryName);
 			if(lottery == null)
 				return;
-			lottery.sendTimeLeftInfo(player);
+			String message = Config.getString(Config.MAIN_LOTTERIES_MESSAGE);
+			message = lottery.format(message);
+			ChatUtils.send(player, message);
 		}
 	}
 }

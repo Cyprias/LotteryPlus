@@ -18,7 +18,7 @@ public class ItemReward implements Reward {
 	}
 
 	public void rewardPlayer(Player player) {
-		if(Config.getProperty(Config.SHOULD_DROP)) {
+		if(Config.getBoolean(Config.SHOULD_DROP)) {
 			World world = player.getWorld();
 			world.dropItem(player.getLocation(), reward);
 		} else {
@@ -29,12 +29,16 @@ public class ItemReward implements Reward {
 		}
 	}
 	
+	public ItemStack getItem() {
+		return reward;
+	}
+	
 	public String getInfo() {
-		return String.format("Item Reward: %d %s(s)", reward.getAmount(), reward.getType().name());
+		return String.format("Item Reward: %d %s(S)", reward.getAmount(), reward.getType().name());
 	}
 	
 	public String toString() {
-		return String.format("[%d %s(s)]", reward.getAmount(), reward.getType().name());
+		return String.format("[%d %s(S)]", reward.getAmount(), reward.getType().name());
 	}
 	
 	public static ItemReward deserialize(Map<String, Object> map) {

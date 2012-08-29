@@ -23,9 +23,4 @@ public class Property<T> {
 	public T getDefaultValue() {
 		return value;
 	}
-	
-	@SuppressWarnings("unchecked")
-	public Class<T> getValueClass() {
-		return (Class<T>) value.getClass();
-	}
 }

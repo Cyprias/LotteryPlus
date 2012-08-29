@@ -59,7 +59,6 @@ public class LotteryTimer implements TimeConstants {
 
 		if (running) {
 			time--;
-			lottery.updateSigns();
 		}
 	}
 

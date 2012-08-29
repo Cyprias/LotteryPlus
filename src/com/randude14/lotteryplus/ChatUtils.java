@@ -8,7 +8,6 @@ import org.bukkit.entity.Player;
 import com.randude14.lotteryplus.configuration.Config;
 
 public class ChatUtils {
-	private static final Plugin plugin = Plugin.getInstance();
 
 	public static void broadcast(String format, Object... args) {
 		broadcast(String.format(format, args));
@@ -16,7 +15,7 @@ public class ChatUtils {
 
 	public static void broadcast(String message) {
 		message = replaceColorCodes(message);
-		String[] messages = message.split(Config.getProperty(Config.LINE_SEPARATOR));
+		String[] messages = message.split(Config.getString(Config.LINE_SEPARATOR));
 		String prefix = getChatPrefix();
 		for (int cntr = 0; cntr < messages.length; cntr++)
 			messages[cntr] = prefix + messages[cntr];
@@ -32,7 +31,7 @@ public class ChatUtils {
 
 	public static void broadcastRaw(String message) {
 		message = replaceColorCodes(message);
-		String[] messages = message.split(Config.getProperty(Config.LINE_SEPARATOR));
+		String[] messages = message.split(Config.getString(Config.LINE_SEPARATOR));
 		for (Player player : Bukkit.getOnlinePlayers()) {
 			player.sendMessage(messages);
 		}
@@ -41,7 +40,7 @@ public class ChatUtils {
 
 	public static void send(CommandSender sender, String message) {
 		message = replaceColorCodes(message);
-		String[] messages = message.split("\\n");
+		String[] messages = message.split(Config.getString(Config.LINE_SEPARATOR));
 		sender.sendMessage(messages);
 	}
 
@@ -92,10 +91,32 @@ public class ChatUtils {
 	}
 
 	public static final String getChatPrefix() {
-		return String.format(ChatColor.YELLOW + "[%s] - ", plugin.getName());
+		return replaceColorCodes(Config.getString(Config.CHAT_PREFIX));
 	}
 
+	// replace color codes with the colors
 	public static final String replaceColorCodes(String mess) {
-		return ChatColor.translateAlternateColorCodes('&', mess);
+		return mess.replaceAll("(&([" + colorCodes + "]))", "\u00A7$2");
+	}
+	
+	// get rid of color codes
+	public static final String cleanColorCodes(String mess) {
+		return mess.replaceAll("(&([" + colorCodes + "]))", "");
+	}
+	
+	private static final String colorCodes;
+	
+	static {
+		String string = "";
+		for(ChatColor color : ChatColor.values()) {
+			char c = color.getChar();
+			if(!Character.isLetter(c)) {
+				string += c;
+			} else {
+				string += Character.toUpperCase(c);
+				string += Character.toLowerCase(c);
+			}
+		}
+		colorCodes = string;
 	}
 }

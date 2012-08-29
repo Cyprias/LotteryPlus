@@ -34,11 +34,11 @@ public class BuyCommand implements Command {
 			return false;
 		}
 		if(lottery.buyTickets((Player) sender, tickets)) {
-			String message = Config.getProperty(Config.BUY_MESSAGE)
+			String message = Config.getString(Config.BUY_MESSAGE)
 					.replace("<player>", sender.getName())
-					.replace("<ticket>", "" + tickets)
+					.replace("<tickets>", "" + tickets)
 					.replace("<lottery>", lottery.getName());
-			ChatUtils.broadcast(message);
+			ChatUtils.broadcastRaw(message);
 			if(lottery.isOver()) {
 				lottery.draw();
 			}

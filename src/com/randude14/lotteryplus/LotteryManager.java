@@ -12,12 +12,10 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import com.randude14.lotteryplus.configuration.Config;
-import com.randude14.lotteryplus.configuration.Property;
 import com.randude14.lotteryplus.lottery.Lottery;
 import com.randude14.lotteryplus.lottery.LotteryOptions;
 import com.randude14.lotteryplus.util.CustomYaml;
 
-@SuppressWarnings({ "unchecked", "rawtypes" })
 public class LotteryManager {
 	private static final CustomYaml lotteriesConfig = new CustomYaml("lotteries.yml");
 	private static final Map<String, Lottery> lotteries = new HashMap<String, Lottery>();
@@ -37,9 +35,7 @@ public class LotteryManager {
 			}
 		}
 		ConfigurationSection section = lotteriesSection.createSection(lotteryName);
-		for(Property defaultValue : defaultValues) {
-			section.set(defaultValue.getName(), Config.getProperty(defaultValue));
-		}
+		writeDefaults(section);
 		lotteriesConfig.saveConfig();
 		ChatUtils.send(sender, ChatColor.YELLOW, "Section created for %s%s, %syou can then " + 
 		                                         "load this lottery using '/lottery load <lottery name>'" + 
@@ -77,6 +73,7 @@ public class LotteryManager {
 				return true;
 			}
 		}
+		ChatUtils.error(sender, "%s was not found.", find);
 		return false;
 	}
 
@@ -153,8 +150,15 @@ public class LotteryManager {
 			reloadLottery(sender, lottery.getName());
 		}
 	}
+	
+	public static int loadLotteries() {
+		return loadLotteries(true);
+	}
 
-	public static void loadLotteries() {
+	public static int loadLotteries(boolean clear) {
+		if(clear) {
+			lotteries.clear();
+		}
 		if(!lotteriesConfig.exists()) {
 			lotteriesConfig.saveDefaultConfig();
 		}
@@ -162,31 +166,31 @@ public class LotteryManager {
 		ConfigurationSection section = getOrCreateLotteriesSection();
 		ConfigurationSection savesSection = lotteriesConfig.getConfig()
 				.getConfigurationSection("saves");
+		int numLotteries = 0;
 		for (String lotteryName : section.getKeys(false)) {
 			if (lotteries.containsKey(lotteryName.toLowerCase()))
 				continue;
 			ConfigurationSection lotteriesSection;
-			boolean load = false;
 			if (savesSection != null && savesSection.contains(lotteryName)) {
 				lotteriesSection = savesSection
 						.getConfigurationSection(lotteryName);
-				load = true;
 			} else {
 				lotteriesSection = section.getConfigurationSection(lotteryName);
 			}
 			Lottery lottery = new Lottery(lotteryName);
 			Map<String, Object> values = lotteriesSection.getValues(true);
 			try {
-				lottery.setOptions(new LotteryOptions(values), load);
+				lottery.setOptions(new LotteryOptions(values));
 			} catch (Exception ex) {
-				Logger.warning("Exception caught while trying to load '%s'.",
-						lotteryName);
+				Logger.warning("Exception caught while trying to load '%s'.", lotteryName);
 				Logger.warning("You can try to load this later using '/lottery load <lottery name>'");
 				ex.printStackTrace();
 				continue;
 			}
+			numLotteries++;
 			lotteries.put(lotteryName.toLowerCase(), lottery);
 		}
+		return numLotteries;
 	}
 
 	public static void saveLotteries() {
@@ -210,7 +214,9 @@ public class LotteryManager {
 		if (page < 1)
 			page = 1;
 		ChatUtils.sendRaw(sender, ChatColor.YELLOW, "--------[%sLotteries, Page (%d/%d)%s]--------", ChatColor.GOLD, page, max, ChatColor.YELLOW);
-		ChatUtils.sendRaw(sender, ChatColor.YELLOW, "For Info: -> '/lottery info <lottery name>'");
+		if(Plugin.hasPermission(sender, Permission.INFO)) {
+			ChatUtils.sendRaw(sender, ChatColor.YELLOW, "For Info: -> '/lottery info <lottery name>'");
+		}
 		for (int cntr = (page * 10) - 10, stop = cntr + 10; cntr < stop && cntr < len; cntr++) {
 			ChatUtils.sendRaw(sender, ChatColor.GOLD, (cntr+1) + ". " + list.get(cntr));
 		}
@@ -245,14 +251,15 @@ public class LotteryManager {
 			}
 		}
 	}
-
-	private static final Property[] defaultValues;
-
-	static {
-		defaultValues = new Property[] { Config.DEFAULT_TICKET_COST,
-				Config.DEFAULT_POT, Config.DEFAULT_TIME,
-				Config.DEFAULT_MAX_TICKETS, Config.DEFAULT_MIN_PLAYERS,
-				Config.DEFAULT_MAX_PLAYERS, Config.DEFAULT_TICKET_TAX,
-				Config.DEFAULT_POT_TAX };
+	
+	private static void writeDefaults(ConfigurationSection section) {
+		section.set(Config.DEFAULT_TICKET_COST.getName(), Config.getDouble(Config.DEFAULT_TICKET_COST));
+		section.set(Config.DEFAULT_POT.getName(), Config.getDouble(Config.DEFAULT_POT));
+		section.set(Config.DEFAULT_TIME.getName(), Config.getLong(Config.DEFAULT_TIME));
+		section.set(Config.DEFAULT_MAX_TICKETS.getName(), Config.getInt(Config.DEFAULT_MAX_TICKETS));
+		section.set(Config.DEFAULT_MIN_PLAYERS.getName(), Config.getInt(Config.DEFAULT_MIN_PLAYERS));
+		section.set(Config.DEFAULT_MAX_PLAYERS.getName(), Config.getInt(Config.DEFAULT_MAX_PLAYERS));
+		section.set(Config.DEFAULT_TICKET_TAX.getName(), Config.getDouble(Config.DEFAULT_TICKET_TAX));
+		section.set(Config.DEFAULT_POT_TAX.getName(), Config.getDouble(Config.DEFAULT_POT_TAX));
 	}
 }

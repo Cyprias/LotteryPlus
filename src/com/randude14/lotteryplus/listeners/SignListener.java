@@ -1,14 +1,10 @@
 package com.randude14.lotteryplus.listeners;
 
-import java.util.List;
-
 import org.bukkit.ChatColor;
-import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
@@ -21,27 +17,22 @@ import com.randude14.lotteryplus.Permission;
 import com.randude14.lotteryplus.Plugin;
 import com.randude14.lotteryplus.configuration.Config;
 import com.randude14.lotteryplus.lottery.Lottery;
-import com.randude14.lotteryplus.util.FormatOptions;
 
-public class SignListener implements Listener, FormatOptions {
+public class SignListener implements Listener {
 
-	public SignListener() {
+	private boolean isLotterySign(String[] lines) {
+		String signTag = ChatUtils.cleanColorCodes(Config
+				.getString(Config.SIGN_TAG));
+		String line1 = ChatColor.stripColor(lines[0]);
+		return signTag.equalsIgnoreCase(line1);
 	}
 
-	@EventHandler
+	@EventHandler(ignoreCancelled = true)
 	public void onSignChange(SignChangeEvent event) {
-		if (event.isCancelled()) {
-			return;
-		}
 		Player player = event.getPlayer();
-		Block block = event.getBlock();
-		if(!Plugin.isSign(block)) 
-			return;
-		Sign sign = (Sign) block.getState();
 		String[] lines = event.getLines();
-		if (lines[0].equalsIgnoreCase("[Lottery+]")) {
-			if (!Plugin.hasPermission(player, Permission.SIGN_CREATE)) {
-				event.setCancelled(true);
+		if (isLotterySign(lines)) {
+			if (!Plugin.checkPermission(player, Permission.SIGN_CREATE)) {
 				return;
 			}
 			if (lines[1] == null || lines[1].equals("")) {
@@ -54,75 +45,80 @@ public class SignListener implements Listener, FormatOptions {
 				ChatUtils.error(player, "%s does not exist.", lines[1]);
 				event.setCancelled(true);
 				return;
-			}	
-			lottery.registerSign(sign);
-			ChatUtils.send(player, ChatColor.YELLOW, "Sign created for %s%s.", ChatColor.GOLD, lottery.getName());
+			}
+			lines[0] = ChatUtils.replaceColorCodes(Config
+					.getString(Config.SIGN_TAG));
+			lines[1] = lottery.getName();
+			ChatUtils.send(player, ChatColor.YELLOW, "Sign created for %s%s.",
+					ChatColor.GOLD, lottery.getName());
 		}
 	}
 
-	@EventHandler(priority = EventPriority.HIGH)
+	@EventHandler(ignoreCancelled = true)
 	public void onBlockBreak(BlockBreakEvent event) {
-		List<Lottery> lotteries = LotteryManager.getLotteries();
-		Location loc = event.getBlock().getLocation();
 		Block block = event.getBlock();
-		Player player = event.getPlayer();
-		if (event.isCancelled()) {
-			return;
-		}
 		if (!Plugin.isSign(block)) {
 			return;
 		}
-		for (Lottery lottery : lotteries) {
-
-			if (lottery.signAtLocation(loc)) {
-
-				if (!Plugin.checkPermission(player, Permission.SIGN_REMOVE)) {
-					event.setCancelled(true);
-					lottery.updateSigns();
-				}
-				else {
-					lottery.unregisterSign(loc);
-					ChatUtils.send(player, ChatColor.YELLOW, "Sign removed from %s%s.", ChatColor.GOLD, lottery.getName());
-				}
+		Sign sign = (Sign) block.getState();
+		Player player = event.getPlayer();
+		String[] lines = sign.getLines();
+		if (isLotterySign(lines)) {
+			if (!Plugin.checkPermission(player, Permission.SIGN_REMOVE)) {
+				event.setCancelled(true);
+				return;
 			}
+			ChatUtils.send(player, ChatColor.YELLOW, "Sign removed from %s.",
+					lines[1]);
 		}
 	}
 
-	@EventHandler
+	@EventHandler(ignoreCancelled = true)
 	public void onPlayerInteract(PlayerInteractEvent event) {
-		List<Lottery> lotteries = LotteryManager.getLotteries();
-		Player player = event.getPlayer();
 		Block block = event.getClickedBlock();
-		String name = player.getName();
 		if (event.getAction() != Action.RIGHT_CLICK_BLOCK) {
 			return;
 		}
-		Location loc = block.getLocation();
-		for (Lottery lottery : lotteries) {
-			if (lottery.signAtLocation(loc)) {
-				event.setCancelled(true);
-				if (!Plugin.checkPermission(player, Permission.BUY)) {
-					return;
-				}
-				if (Plugin.isBuyer(name)) {
-					Plugin.removeBuyer(name);
-					ChatUtils.errorRaw(player, "Transaction cancelled.");
-					ChatUtils.sendRaw(player, ChatColor.GOLD, "---------------------------------------------------");
-					return;
-				}
-				ChatUtils.sendRaw(player, ChatColor.GOLD, "---------------------------------------------------");
-				String[] messages = getSignMessage(lottery);
-				player.sendMessage(messages);
-				ChatUtils.send(player, "");
-				ChatUtils.sendRaw(player, ChatColor.YELLOW, "How many tickets would you like to buy?");
-				Plugin.addBuyer(player.getName(), lottery.getName());
+		if(!Plugin.isSign(block)) {
+			return;
+		}
+		Sign sign = (Sign) block.getState();
+		String[] lines = sign.getLines();
+		if(isLotterySign(lines)) {
+			lines[0] = ChatUtils.replaceColorCodes(Config.getString(Config.SIGN_TAG));
+			event.setCancelled(true);
+			Player player = event.getPlayer();
+			String name = player.getName();
+			if (!Plugin.checkPermission(player, Permission.SIGN_USE)) {
+				return;
 			}
+			Lottery lottery = LotteryManager.getLottery(lines[1]);
+			if(lottery == null) {
+				ChatUtils.error(player, "This lottery sign is broken. Contact an admin for help.");
+				return;
+			}
+			lines[1] = lottery.getName();
+			if (Plugin.isBuyer(name)) {
+				Plugin.removeBuyer(name);
+				ChatUtils.errorRaw(player, "Transaction cancelled.");
+				ChatUtils.sendRaw(player, ChatColor.GOLD,
+						"---------------------------------------------------");
+				return;
+			}
+			ChatUtils.sendRaw(player, ChatColor.GOLD,
+					"---------------------------------------------------");
+			String[] messages = getSignMessage(lottery);
+			player.sendMessage(messages);
+			ChatUtils.send(player, "");
+			ChatUtils.sendRaw(player, ChatColor.YELLOW,
+					"How many tickets would you like to buy?");
+			Plugin.addBuyer(name, lottery.getName());
 		}
 	}
 
 	private String[] getSignMessage(Lottery lottery) {
-		String signMessage = Config.getProperty(Config.SIGN_MESSAGE);
+		String signMessage = Config.getString(Config.SIGN_MESSAGE);
 		signMessage = lottery.format(ChatUtils.replaceColorCodes(signMessage));
-		return signMessage.split(Config.getProperty(Config.LINE_SEPARATOR));
+		return signMessage.split(Config.getString(Config.LINE_SEPARATOR));
 	}
 }
