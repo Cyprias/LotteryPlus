@@ -1,4 +1,4 @@
-package com.randude14.lotteryplus.util;
+package com.randude14.lotteryplus.configuration;
 
 import java.io.File;
 import java.io.FileNotFoundException;

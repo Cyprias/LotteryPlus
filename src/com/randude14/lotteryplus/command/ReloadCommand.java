@@ -18,7 +18,7 @@ public class ReloadCommand implements Command {
 		if(args.length < 1) {
 			return ChatUtils.sendCommandHelp(sender, Permission.RELOAD, "/%s reload <lottery name> - reload a lottery", cmd);
 		}
-		LotteryManager.reloadLottery(sender, args[0]);
+		LotteryManager.reloadLottery(sender, args[0], true);
 		return true;
 	}
 

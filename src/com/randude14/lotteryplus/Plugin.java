@@ -44,13 +44,12 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import com.randude14.lotteryplus.command.*;
-import com.randude14.lotteryplus.configuration.Config;
+import com.randude14.lotteryplus.configuration.CustomYaml;
 import com.randude14.lotteryplus.listeners.PlayerListener;
 import com.randude14.lotteryplus.listeners.SignListener;
 import com.randude14.lotteryplus.lottery.ItemReward;
 import com.randude14.lotteryplus.lottery.Lottery;
 import com.randude14.lotteryplus.tasks.*;
-import com.randude14.lotteryplus.util.CustomYaml;
 import com.randude14.lotteryplus.util.TimeConstants;
 
 public class Plugin extends JavaPlugin implements Listener, TimeConstants {
@@ -77,12 +76,14 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 		if (!setupEconomy()) {
 			Logger.warning("economy system not found! Lottery+ uses 'Vault' to plug into other economies.");
 			Logger.warning("download is at 'http://dev.bukkit.org/server-mods/vault/'");
+			disable();
 			return;
 		}
 
 		if (!setupPermission()) {
 			Logger.warning("permission system not found! Lottery+ uses 'Vault' to plug into other permissions.");
 			Logger.warning("download is at 'http://dev.bukkit.org/server-mods/vault/'");
+			disable();
 			return;
 		}
 		tasks.add(new ReminderMessageTask());
@@ -176,6 +177,10 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 		instance.reloadConfig();
 		callTasks();
 	}
+	
+	public static void disable() {
+		instance.getServer().getPluginManager().disablePlugin(instance);
+	}
 
 	private void registerListeners(Listener... listeners) {
 		PluginManager manager = getServer().getPluginManager();
@@ -265,8 +270,8 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 		return buyers.containsKey(name);
 	}
 
-	public static void removeBuyer(String name) {
-		buyers.remove(name);
+	public static String removeBuyer(String name) {
+		return buyers.remove(name);
 	}
 
 	
@@ -325,11 +330,7 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 					ChatUtils
 							.sendRaw(player, ChatColor.GOLD,
 									"---------------------------------------------------");
-					String message = Config.getString(Config.BUY_MESSAGE);
-					message = message.replace("<player>", name)
-							.replace("<tickets>", "" + tickets)
-							.replace("<lottery>", lottery.getName());
-					ChatUtils.broadcastRaw(message);
+					lottery.broadcast(player.getName(), tickets);
 					if(lottery.isOver()) {
 						lottery.draw();
 					}

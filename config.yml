@@ -46,6 +46,9 @@ properties:
 
     # delay between update checks, x minutes: set to 0 or less to disable, can also use '/lottery update' to check on updates
     update-delay: 30
+    
+    # the delay that takes place between a lottery drawing and when it announces the winner, x seconds
+    draw-delay: 3
 
     # delay between reminder messages, x minutes: set to 0 or less to disable
     reminder-message-delay: 10
@@ -55,6 +58,9 @@ properties:
     
     # whether to log lottery savings or not
     should-log: false
+    
+    # whether players should be allowed to buy tickets during the lottery drawing
+    buy-during-draw: false
 
     # the line separator used in messages
     line-separator: '<newline>'
@@ -108,6 +114,15 @@ defaults:
 
     # whether this lottery should repeat after the next drawing
     repeat: true
+    
+    # whether the pot should be cleared if a winner is not drawn
+    clear-pot: false
+    
+    # whether the rewards should be cleared if a winner is not drawn
+    clear-rewards: false
+    
+    # how many tickets are available for a lottery, set to 0 for infinite tickets
+    ticket-limit: 0
 
     # the starting pot
     pot: 1000.00

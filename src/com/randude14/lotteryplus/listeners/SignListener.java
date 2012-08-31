@@ -99,11 +99,13 @@ public class SignListener implements Listener {
 			}
 			lines[1] = lottery.getName();
 			if (Plugin.isBuyer(name)) {
-				Plugin.removeBuyer(name);
-				ChatUtils.errorRaw(player, "Transaction cancelled.");
-				ChatUtils.sendRaw(player, ChatColor.GOLD,
-						"---------------------------------------------------");
-				return;
+				String lotteryName = Plugin.removeBuyer(name);
+				if(lotteryName.equalsIgnoreCase(lottery.getName())) {
+					ChatUtils.errorRaw(player, "Transaction cancelled.");
+					ChatUtils.sendRaw(player, ChatColor.GOLD,
+							"---------------------------------------------------");
+					return;
+				} 
 			}
 			ChatUtils.sendRaw(player, ChatColor.GOLD,
 					"---------------------------------------------------");

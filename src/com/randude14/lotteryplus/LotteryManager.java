@@ -12,9 +12,9 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import com.randude14.lotteryplus.configuration.Config;
+import com.randude14.lotteryplus.configuration.CustomYaml;
 import com.randude14.lotteryplus.lottery.Lottery;
 import com.randude14.lotteryplus.lottery.LotteryOptions;
-import com.randude14.lotteryplus.util.CustomYaml;
 
 public class LotteryManager {
 	private static final CustomYaml lotteriesConfig = new CustomYaml("lotteries.yml");
@@ -78,19 +78,26 @@ public class LotteryManager {
 	}
 
 	public static boolean unloadLottery(String find) {
-		return unloadLottery(Bukkit.getConsoleSender(), find);
+		return unloadLottery(Bukkit.getConsoleSender(), find, false);
+	}
+	
+	public static boolean unloadLottery(CommandSender sender, String find) {
+		return unloadLottery(sender, find, false);
 	}
 
-	public static boolean unloadLottery(CommandSender sender, String find) {
+	public static boolean unloadLottery(CommandSender sender, String find, boolean flag) {
 		if (!lotteries.containsKey(find.toLowerCase())) {
 			ChatUtils.error(sender, "%s does not exist.", find);
 		}
-		ConfigurationSection section = getOrCreateLotteriesSection();
-		ConfigurationSection savesSection = lotteriesConfig.getConfig()
-				.getConfigurationSection("saves");
-		deleteSection(section, find);
-		if (savesSection != null) {
+		lotteries.remove(find.toLowerCase());
+		if(flag) {
+			ConfigurationSection section = getOrCreateLotteriesSection();
+			ConfigurationSection savesSection = lotteriesConfig.getConfig()
+					.getConfigurationSection("saves");
 			deleteSection(section, find);
+			if (savesSection != null) {
+				deleteSection(savesSection, find);
+			}
 		}
 		return false;
 	}
@@ -104,10 +111,10 @@ public class LotteryManager {
 	}
 
 	public static boolean reloadLottery(String lotteryName) {
-		return reloadLottery(Bukkit.getConsoleSender(), lotteryName);
+		return reloadLottery(Bukkit.getConsoleSender(), lotteryName, true);
 	}
 
-	public static boolean reloadLottery(CommandSender sender, String lotteryName) {
+	public static boolean reloadLottery(CommandSender sender, String lotteryName, boolean force) {
 		Lottery lottery = lotteries.get(lotteryName.toLowerCase());
 		if (lottery == null) {
 			ChatUtils.error(sender, "%s does not exist.", lotteryName);
@@ -125,7 +132,7 @@ public class LotteryManager {
 						.getConfigurationSection(sectionName);
 				Map<String, Object> values = lotteriesSection.getValues(true);
 				try {
-					lottery.setOptions(new LotteryOptions(values));
+					lottery.setOptions(new LotteryOptions(values), force);
 				} catch (Exception ex) {
 					ChatUtils.error(sender,
 							"Exception caught while trying to reload '%s'.",
@@ -147,7 +154,7 @@ public class LotteryManager {
 	
 	public static void reloadLotteries(CommandSender sender) {
 		for(Lottery lottery : lotteries.values()) {
-			reloadLottery(sender, lottery.getName());
+			reloadLottery(sender, lottery.getName(), true);
 		}
 	}
 	

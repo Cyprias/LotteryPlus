@@ -9,7 +9,6 @@ import com.randude14.lotteryplus.ChatUtils;
 import com.randude14.lotteryplus.LotteryManager;
 import com.randude14.lotteryplus.Permission;
 import com.randude14.lotteryplus.Plugin;
-import com.randude14.lotteryplus.configuration.Config;
 import com.randude14.lotteryplus.lottery.Lottery;
 
 public class BuyCommand implements Command {
@@ -34,11 +33,7 @@ public class BuyCommand implements Command {
 			return false;
 		}
 		if(lottery.buyTickets((Player) sender, tickets)) {
-			String message = Config.getString(Config.BUY_MESSAGE)
-					.replace("<player>", sender.getName())
-					.replace("<tickets>", "" + tickets)
-					.replace("<lottery>", lottery.getName());
-			ChatUtils.broadcastRaw(message);
+			lottery.broadcast(sender.getName(), tickets);
 			if(lottery.isOver()) {
 				lottery.draw();
 			}

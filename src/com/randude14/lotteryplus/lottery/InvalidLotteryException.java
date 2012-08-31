@@ -7,6 +7,14 @@ public class InvalidLotteryException extends RuntimeException {
 		super(message);
 	}
 	
+	public InvalidLotteryException(String message, Throwable cause) {
+		super(message, cause);
+	}
+	
+	public InvalidLotteryException(Throwable cause) {
+		super(cause);
+	}
+	
 	public InvalidLotteryException() {
 		super();
 	}

@@ -6,7 +6,7 @@ import java.util.List;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 
-import com.randude14.lotteryplus.util.CustomYaml;
+import com.randude14.lotteryplus.configuration.CustomYaml;
 
 public class WinnersManager {
 	private static final CustomYaml winnersConfig = new CustomYaml("winners.yml");
