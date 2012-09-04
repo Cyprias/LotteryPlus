@@ -66,12 +66,12 @@ public class ChatUtils {
 	}
 
 	public static boolean sendCommandHelp(CommandSender sender,
-			Permission permission, String line, org.bukkit.command.Command cmd) {
+			Perm permission, String line, org.bukkit.command.Command cmd) {
 		return sendCommandHelp(sender, permission, "- ", line, cmd);
 	}
 
 	public static boolean sendCommandHelp(CommandSender sender,
-			Permission permission, String prefix, String line,
+			Perm permission, String prefix, String line,
 			org.bukkit.command.Command cmd) {
 		if (!Plugin.hasPermission(sender, permission))
 			return false;

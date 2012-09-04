@@ -6,16 +6,16 @@ import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 
 import com.randude14.lotteryplus.ChatUtils;
-import com.randude14.lotteryplus.Permission;
+import com.randude14.lotteryplus.Perm;
 import com.randude14.lotteryplus.Plugin;
 
 public class VersionCommand implements Command {
 
 	public boolean execute(CommandSender sender, org.bukkit.command.Command cmd, String[] args) {
-		if(!Plugin.checkPermission(sender, Permission.DRAW)) {
+		if(!Plugin.checkPermission(sender, Perm.DRAW)) {
 			return false;
 		}
-		ChatUtils.send(sender, ChatColor.YELLOW, "Version: %s%s", ChatColor.GOLD, Plugin.getVersion());
+		ChatUtils.send(sender, ChatColor.GOLD, "Version: %s", Plugin.getVersion());
 		return true;
 	}
 
@@ -24,11 +24,11 @@ public class VersionCommand implements Command {
 	}
 
 	public void getCommands(CommandSender sender, org.bukkit.command.Command cmd) {
-		ChatUtils.sendCommandHelp(sender, Permission.DRAW, "/%s version - get plugin version", cmd);
+		ChatUtils.sendCommandHelp(sender, Perm.DRAW, "/%s version - get plugin version", cmd);
 	}
 
 	public void listCommands(CommandSender sender, List<String> list) {
-		if(Plugin.hasPermission(sender, Permission.DRAW))
+		if(Plugin.hasPermission(sender, Perm.DRAW))
 			list.add("/%s version - get plugin version");
 	}
 	

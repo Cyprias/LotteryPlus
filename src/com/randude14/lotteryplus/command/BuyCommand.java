@@ -7,18 +7,18 @@ import org.bukkit.entity.Player;
 
 import com.randude14.lotteryplus.ChatUtils;
 import com.randude14.lotteryplus.LotteryManager;
-import com.randude14.lotteryplus.Permission;
+import com.randude14.lotteryplus.Perm;
 import com.randude14.lotteryplus.Plugin;
 import com.randude14.lotteryplus.lottery.Lottery;
 
 public class BuyCommand implements Command {
 
 	public boolean execute(CommandSender sender, org.bukkit.command.Command cmd, String[] args) {
-		if(!Plugin.checkPermission(sender, Permission.BUY)) {
+		if(!Plugin.checkPermission(sender, Perm.BUY)) {
 			return false;
 		}
 		if(args.length < 2) {
-			return ChatUtils.sendCommandHelp(sender, Permission.BUY, "/%s buy <lottery name> <x tickets> - buy tickets for a lottery", cmd);
+			return ChatUtils.sendCommandHelp(sender, Perm.BUY, "/%s buy <lottery name> <x tickets> - buy tickets for a lottery", cmd);
 		}
 		Lottery lottery = LotteryManager.getLottery(args[0].toLowerCase());
 		if(lottery == null) {
@@ -46,12 +46,12 @@ public class BuyCommand implements Command {
 	}
 	
 	public void listCommands(CommandSender sender, List<String> list) {
-		if(Plugin.hasPermission(sender, Permission.BUY))
+		if(Plugin.hasPermission(sender, Perm.BUY))
 			list.add("/%s buy <lottery name> <x tickets> - buy tickets for a lottery");
 	}
 	
 	public void getCommands(CommandSender sender, org.bukkit.command.Command cmd) {
-		ChatUtils.sendCommandHelp(sender, Permission.BUY, "/%s buy <lottery name> <x tickets> - buy tickets for a lottery", cmd);
+		ChatUtils.sendCommandHelp(sender, Perm.BUY, "/%s buy <lottery name> <x tickets> - buy tickets for a lottery", cmd);
 	}
 	
 	public boolean hasValues() {

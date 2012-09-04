@@ -9,8 +9,6 @@ import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 
-import net.milkbowl.vault.economy.Economy;
-
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -36,7 +34,6 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.PluginManager;
-import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -49,6 +46,9 @@ import com.randude14.lotteryplus.listeners.PlayerListener;
 import com.randude14.lotteryplus.listeners.SignListener;
 import com.randude14.lotteryplus.lottery.ItemReward;
 import com.randude14.lotteryplus.lottery.Lottery;
+import com.randude14.lotteryplus.register.permission.BukkitPermission;
+import com.randude14.lotteryplus.register.permission.Permission;
+import com.randude14.lotteryplus.register.permission.VaultPermission;
 import com.randude14.lotteryplus.tasks.*;
 import com.randude14.lotteryplus.util.TimeConstants;
 
@@ -57,9 +57,8 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 	private static final Map<InventoryHolder, Inventory> inventories = new HashMap<InventoryHolder, Inventory>();
 	private static final Map<String, String> buyers = new HashMap<String, String>();
 	private static final List<Task> tasks = new ArrayList<Task>();
-	private static net.milkbowl.vault.permission.Permission perm;
-	private static Economy econ;
 	public static final String CMD_LOTTERY = "lottery";
+	private static Permission perm;
 	private File configFile;
 
 	public void onEnable() {
@@ -72,20 +71,7 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 			Logger.info("Config file not found. Writing defaults.");
 			saveDefaultConfig();
 		}
-
-		if (!setupEconomy()) {
-			Logger.warning("economy system not found! Lottery+ uses 'Vault' to plug into other economies.");
-			Logger.warning("download is at 'http://dev.bukkit.org/server-mods/vault/'");
-			disable();
-			return;
-		}
-
-		if (!setupPermission()) {
-			Logger.warning("permission system not found! Lottery+ uses 'Vault' to plug into other permissions.");
-			Logger.warning("download is at 'http://dev.bukkit.org/server-mods/vault/'");
-			disable();
-			return;
-		}
+		
 		tasks.add(new ReminderMessageTask());
 		tasks.add(new SaveTask());
 		tasks.add(new UpdateCheckTask());
@@ -98,6 +84,7 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 			Logger.info("%d lotteries were loaded.", numLotteries);
 		}
 		loadPermissions();
+		loadRegistry();
 		callTasks();
 		saveExtras();
 		registerListeners(this, new PlayerListener(), new SignListener());
@@ -131,14 +118,23 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 		getServer().getScheduler().cancelTasks(this);
 		LotteryManager.saveLotteries();
 		instance = null;
-		econ = null;
 		perm = null;
 	}
 	
 	private void loadPermissions() {
 		PluginManager pm = Bukkit.getPluginManager();
-		for (Permission permission : Permission.values()) {
+		for (Perm permission : Perm.values()) {
 			permission.loadPermission(pm);
+		}
+	}
+	
+	private static void loadRegistry() {
+		if(!VaultPermission.isVaultInstalled()) {
+			Logger.info("Permission system not found from Vault or Vault is not installed.");
+			Logger.info("Defaulting to Bukkit's permission system.");
+			perm = new BukkitPermission();
+		} else {
+			perm = new VaultPermission();
 		}
 	}
 
@@ -176,6 +172,7 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 	public static void reload() {
 		instance.reloadConfig();
 		callTasks();
+		loadRegistry();
 	}
 	
 	public static void disable() {
@@ -189,30 +186,7 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 			manager.registerEvents(listener, this);
 		}
 	}
-
-	private static boolean setupEconomy() {
-		RegisteredServiceProvider<Economy> economyProvider = instance
-				.getServer().getServicesManager()
-				.getRegistration(net.milkbowl.vault.economy.Economy.class);
-		if (economyProvider != null) {
-			econ = economyProvider.getProvider();
-		}
-
-		return (econ != null);
-	}
-
-	private static boolean setupPermission() {
-		RegisteredServiceProvider<net.milkbowl.vault.permission.Permission> permissionProvider = instance
-				.getServer()
-				.getServicesManager()
-				.getRegistration(net.milkbowl.vault.permission.Permission.class);
-		if (permissionProvider != null) {
-			perm = permissionProvider.getProvider();
-		}
-
-		return (perm != null);
-	}
-
+	
 	public static boolean locsInBounds(Location loc1, Location loc2) {
 		return loc1.getBlockX() == loc2.getBlockX()
 				&& loc1.getBlockY() == loc2.getBlockY()
@@ -241,11 +215,11 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 	}
 
 	public static boolean checkPermission(CommandSender sender,
-			Permission permission) {
+			Perm permission) {
 		if (!hasPermission(sender, permission)) {
 			String mess = permission.getErrorMessage();
 			if (mess == null)
-				mess = Permission.DEFAULT_ERROR_MESSAGE;
+				mess = Perm.DEFAULT_ERROR_MESSAGE;
 			ChatUtils.error(sender, mess);
 			return false;
 		}
@@ -253,13 +227,11 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 	}
 
 	public static boolean hasPermission(CommandSender sender,
-			Permission permission) {
+			Perm permission) {
 		if (sender instanceof ConsoleCommandSender)
 			return true;
-		Player p = (Player) sender;
-		String player = p.getName();
-		String world = p.getWorld().getName();
-		return permission.hasPermission(perm, player, world);
+		Player player = (Player) sender;
+		return perm.hasPermission(player, permission);
 	}
 
 	public static void addBuyer(String player, String lottery) {
@@ -462,11 +434,7 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 	public static boolean isSign(Location loc) {
 		return isSign(loc.getBlock());
 	}
-
-	public static Economy getEconomy() {
-		return econ;
-	}
-
+	
 	public static final Plugin getInstance() {
 		return instance;
 	}

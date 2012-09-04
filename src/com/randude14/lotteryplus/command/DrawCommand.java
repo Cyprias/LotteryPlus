@@ -6,18 +6,18 @@ import org.bukkit.command.CommandSender;
 
 import com.randude14.lotteryplus.ChatUtils;
 import com.randude14.lotteryplus.LotteryManager;
-import com.randude14.lotteryplus.Permission;
+import com.randude14.lotteryplus.Perm;
 import com.randude14.lotteryplus.Plugin;
 import com.randude14.lotteryplus.lottery.Lottery;
 
 public class DrawCommand implements Command {
 
 	public boolean execute(CommandSender sender, org.bukkit.command.Command cmd, String[] args) {
-		if(!Plugin.checkPermission(sender, Permission.DRAW)) {
+		if(!Plugin.checkPermission(sender, Perm.DRAW)) {
 			return false;
 		}
 		if(args.length < 1) {
-			return ChatUtils.sendCommandHelp(sender, Permission.DRAW, "/%s draw <lottery name> - force draw a lottery", cmd);
+			return ChatUtils.sendCommandHelp(sender, Perm.DRAW, "/%s draw <lottery name> - force draw a lottery", cmd);
 		}
 		Lottery lottery = LotteryManager.getLottery(args[0]);
 		if(lottery == null) {
@@ -33,11 +33,11 @@ public class DrawCommand implements Command {
 	}
 
 	public void getCommands(CommandSender sender, org.bukkit.command.Command cmd) {
-		ChatUtils.sendCommandHelp(sender, Permission.DRAW, "/%s draw <lottery name> - force draw a lottery", cmd);
+		ChatUtils.sendCommandHelp(sender, Perm.DRAW, "/%s draw <lottery name> - force draw a lottery", cmd);
 	}
 
 	public void listCommands(CommandSender sender, List<String> list) {
-		if(Plugin.hasPermission(sender, Permission.DRAW))
+		if(Plugin.hasPermission(sender, Perm.DRAW))
 			list.add("/%s draw <lottery name> - force draw a lottery");
 	}
 	

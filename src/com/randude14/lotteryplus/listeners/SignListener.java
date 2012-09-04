@@ -13,7 +13,7 @@ import org.bukkit.event.player.PlayerInteractEvent;
 
 import com.randude14.lotteryplus.ChatUtils;
 import com.randude14.lotteryplus.LotteryManager;
-import com.randude14.lotteryplus.Permission;
+import com.randude14.lotteryplus.Perm;
 import com.randude14.lotteryplus.Plugin;
 import com.randude14.lotteryplus.configuration.Config;
 import com.randude14.lotteryplus.lottery.Lottery;
@@ -32,7 +32,7 @@ public class SignListener implements Listener {
 		Player player = event.getPlayer();
 		String[] lines = event.getLines();
 		if (isLotterySign(lines)) {
-			if (!Plugin.checkPermission(player, Permission.SIGN_CREATE)) {
+			if (!Plugin.checkPermission(player, Perm.SIGN_CREATE)) {
 				return;
 			}
 			if (lines[1] == null || lines[1].equals("")) {
@@ -64,7 +64,7 @@ public class SignListener implements Listener {
 		Player player = event.getPlayer();
 		String[] lines = sign.getLines();
 		if (isLotterySign(lines)) {
-			if (!Plugin.checkPermission(player, Permission.SIGN_REMOVE)) {
+			if (!Plugin.checkPermission(player, Perm.SIGN_REMOVE)) {
 				event.setCancelled(true);
 				return;
 			}
@@ -89,7 +89,7 @@ public class SignListener implements Listener {
 			event.setCancelled(true);
 			Player player = event.getPlayer();
 			String name = player.getName();
-			if (!Plugin.checkPermission(player, Permission.SIGN_USE)) {
+			if (!Plugin.checkPermission(player, Perm.SIGN_USE)) {
 				return;
 			}
 			Lottery lottery = LotteryManager.getLottery(lines[1]);

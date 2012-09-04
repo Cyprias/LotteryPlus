@@ -7,18 +7,18 @@ import org.bukkit.command.CommandSender;
 
 import com.randude14.lotteryplus.ChatUtils;
 import com.randude14.lotteryplus.LotteryManager;
-import com.randude14.lotteryplus.Permission;
+import com.randude14.lotteryplus.Perm;
 import com.randude14.lotteryplus.Plugin;
 import com.randude14.lotteryplus.lottery.Lottery;
 
 public class InfoCommand implements Command {
 
 	public boolean execute(CommandSender sender, org.bukkit.command.Command cmd, String[] args) {
-		if(!Plugin.checkPermission(sender, Permission.INFO)) {
+		if(!Plugin.checkPermission(sender, Perm.INFO)) {
 			return false;
 		}
 		if(args.length > 1) {
-			ChatUtils.sendCommandHelp(sender, Permission.INFO, "/%s info <lottery name> - get info about a lottery", cmd);
+			ChatUtils.sendCommandHelp(sender, Perm.INFO, "/%s info <lottery name> - get info about a lottery", cmd);
 			return true;
 		}
 		Lottery lottery = LotteryManager.getLottery(args[0]);
@@ -36,11 +36,11 @@ public class InfoCommand implements Command {
 	}
 
 	public void getCommands(CommandSender sender, org.bukkit.command.Command cmd) {
-		ChatUtils.sendCommandHelp(sender, Permission.INFO, "/%s info <lottery name> - get info about a lottery", cmd);
+		ChatUtils.sendCommandHelp(sender, Perm.INFO, "/%s info <lottery name> - get info about a lottery", cmd);
 	}
 
 	public void listCommands(CommandSender sender, List<String> list) {
-		if(Plugin.hasPermission(sender, Permission.INFO))
+		if(Plugin.hasPermission(sender, Perm.INFO))
 			list.add("/%s info <lottery name> - get info about a lottery");
 	}
 	

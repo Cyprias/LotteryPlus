@@ -221,7 +221,7 @@ public class LotteryManager {
 		if (page < 1)
 			page = 1;
 		ChatUtils.sendRaw(sender, ChatColor.YELLOW, "--------[%sLotteries, Page (%d/%d)%s]--------", ChatColor.GOLD, page, max, ChatColor.YELLOW);
-		if(Plugin.hasPermission(sender, Permission.INFO)) {
+		if(Plugin.hasPermission(sender, Perm.INFO)) {
 			ChatUtils.sendRaw(sender, ChatColor.YELLOW, "For Info: -> '/lottery info <lottery name>'");
 		}
 		for (int cntr = (page * 10) - 10, stop = cntr + 10; cntr < stop && cntr < len; cntr++) {
@@ -262,7 +262,7 @@ public class LotteryManager {
 	private static void writeDefaults(ConfigurationSection section) {
 		section.set(Config.DEFAULT_TICKET_COST.getName(), Config.getDouble(Config.DEFAULT_TICKET_COST));
 		section.set(Config.DEFAULT_POT.getName(), Config.getDouble(Config.DEFAULT_POT));
-		section.set(Config.DEFAULT_TIME.getName(), Config.getLong(Config.DEFAULT_TIME));
+		section.set(Config.DEFAULT_TIME.getName(), Config.getDouble(Config.DEFAULT_TIME));
 		section.set(Config.DEFAULT_MAX_TICKETS.getName(), Config.getInt(Config.DEFAULT_MAX_TICKETS));
 		section.set(Config.DEFAULT_MIN_PLAYERS.getName(), Config.getInt(Config.DEFAULT_MIN_PLAYERS));
 		section.set(Config.DEFAULT_MAX_PLAYERS.getName(), Config.getInt(Config.DEFAULT_MAX_PLAYERS));

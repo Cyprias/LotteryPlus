@@ -8,8 +8,6 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
-import net.milkbowl.vault.economy.Economy;
-
 import org.apache.commons.lang.Validate;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -25,6 +23,9 @@ import com.randude14.lotteryplus.Plugin;
 import com.randude14.lotteryplus.Utils;
 import com.randude14.lotteryplus.WinnersManager;
 import com.randude14.lotteryplus.configuration.Config;
+import com.randude14.lotteryplus.register.economy.Economy;
+import com.randude14.lotteryplus.register.economy.MaterialEconomy;
+import com.randude14.lotteryplus.register.economy.VaultEconomy;
 import com.randude14.lotteryplus.util.FormatOptions;
 import com.randude14.lotteryplus.util.TimeConstants;
 
@@ -34,6 +35,7 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 	private final String lotteryName;
 	private final Random rand;
 	private LotteryOptions options;
+	private Economy econ;
 	private boolean success;
 	private int drawId;
 
@@ -69,11 +71,63 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 		}
 		return options.getBoolean(Config.DEFAULT_ITEM_ONLY) && num > 0;
 	}
+	
+	public Economy getEconomy() {
+		return econ;
+	}
 
+	//called every second
 	public void onTick() {
 		timer.onTick();
 		if (timer.isOver()) {
 			this.draw();
+			return;
+		}
+		printWarningTimes();
+	}
+	
+	private void printWarningTimes() {
+		String line = options.getString(Config.DEFAULT_WARNING_TIMES);
+		if(line != null && !line.isEmpty()) {
+			for(String timeStr : line.split("\\s+")) {
+				int len = timeStr.length();
+				if(len == 0) {
+					continue;
+				}
+				try {
+					long time = Long.parseLong(timeStr.substring(0, len-1));
+					String timeMess = time + " ";
+					char c = Character.toLowerCase(timeStr.charAt(len-1));
+					switch(c) {
+					case 'w':
+						time = WEEK * time;
+						timeMess += "week(s)";
+					    break;
+					case 'd':
+						time = DAY * time;
+						timeMess += "day(s)";
+					    break;
+					case 'h':
+						time = HOUR * time;
+						timeMess += "hour(s)";
+					    break;
+					case 'm':
+						time = MINUTE * time;
+						timeMess += "minute(s)";
+					    break;
+					default:
+						//no need to do anything with time, already in seconds
+						timeMess += "second(s)";
+						break;
+					}
+					if(timer.getTime() == time) {
+						String message = Config.getString(Config.WARNING_MESSAGE).replace("<name>", lotteryName).replace("<time>", timeMess);
+						ChatUtils.broadcastRaw(message);
+					}
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				}
+			}
 		}
 	}
 
@@ -87,7 +141,7 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 						(!winner.isEmpty()) ? winner : "no winner yet")
 				.replace(
 						FORMAT_TICKET_COST,
-						Utils.format(options
+						econ.format(options
 								.getDouble(Config.DEFAULT_TICKET_COST)))
 				.replace(
 						FORMAT_TICKET_TAX,
@@ -101,7 +155,7 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 
 	private String formatReward() {
 		if (!isItemOnly())
-			return Utils.format(options.getDouble(Config.DEFAULT_POT));
+			return econ.format(options.getDouble(Config.DEFAULT_POT));
 		int num = 0;
 		for (int cntr = 0; cntr < rewards.size(); cntr++) {
 			if (rewards instanceof ItemReward)
@@ -110,17 +164,29 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 		return num + " item(s)";
 	}
 
-	public boolean addToPot(CommandSender sender, double add) {
+	public synchronized boolean addToPot(CommandSender sender, double add) {
 		if (isItemOnly()) {
 			ChatUtils.error(sender, "%s does not have a pot.", lotteryName);
 			return false;
+		}
+		if(sender instanceof Player) {
+			Player player = (Player) sender;
+			if(!econ.hasAccount(player)) {
+				ChatUtils.error(player, "You do not have an account with your server's economy.");
+				return false;
+			}
+			if(!econ.hasEnough(player, add)) {
+				ChatUtils.error(player, "You do not have enough %s.", econ.format(add));
+				return false;
+			}
+			econ.withdraw(player, add);
 		}
 		double pot = options.getDouble(Config.DEFAULT_POT);
 		options.set(Config.DEFAULT_POT, pot + add);
 		ChatUtils
 				.send(sender, ChatColor.GOLD,
 						"%s %shas been added to %s%s's %spot.",
-						Utils.format(add), ChatColor.YELLOW, ChatColor.GOLD,
+						econ.format(add), ChatColor.YELLOW, ChatColor.GOLD,
 						lotteryName, ChatColor.YELLOW);
 		return true;
 	}
@@ -133,8 +199,10 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 			throws Exception {
 		try {
 			// CHECK FOR NEGATIVE OPTIONS
+			double time = options.getDouble(Config.DEFAULT_TIME);
 			double pot = options.getDouble(Config.DEFAULT_POT);
 			double ticketCost = options.getDouble(Config.DEFAULT_TICKET_COST);
+			Validate.isTrue(time >= 0, "Time cannot be negative: " + time);
 			Validate.isTrue(pot >= 0.0, "Pot cannot be negative: " + pot);
 			Validate.isTrue(ticketCost >= 0.0, "Ticket Cost cannot be negative: "
 					+ ticketCost);
@@ -146,6 +214,22 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 			}
 
 			this.options = options;
+			
+			//ECONOMY
+			econ = null;
+			if(options.getBoolean(Config.DEFAULT_USE_VAULT)) {
+				if(VaultEconomy.isVaultInstalled()) {
+					econ = new VaultEconomy();
+				}
+			} else {
+				int materialID = Config.getInt(Config.DEFAULT_MATERIAL_ID);
+				String name = Config.getString(Config.DEFAULT_MATERIAL_NAME);
+				econ = new MaterialEconomy(materialID, name);
+			}
+			
+			if(econ == null) {
+				throw new NullPointerException("Failed to load an economy.");
+			}
 
 			// SET SEED FOR RANDOM
 			rand.setSeed(Utils.loadSeed(options.getString(Config.DEFAULT_SEED)));
@@ -169,13 +253,12 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 				long resetTime = options.getLong("reset-time", 0L);
 				timer.setResetTime(resetTime);
 			} else {
-				long time = (long) Math.floor(options.getLong(Config.DEFAULT_TIME)
-						* HOUR);
-				timer.setTime(time);
-				timer.setResetTime(time);
+				long t = (long) Math.floor(time * (double)HOUR);
+				timer.setTime(t);
+				timer.setResetTime(t);
 			}
 		} catch (Exception ex) {
-			throw new InvalidLotteryException(ex);
+			throw new InvalidLotteryException("Failed to load options", ex);
 		}
 	}
 
@@ -200,7 +283,7 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 		options.remove("drawing");
 	}
 
-	public boolean canBuy(Player player, int tickets) {
+	public synchronized boolean canBuy(Player player, int tickets) {
 		if (isDrawing() && !Config.getBoolean(Config.BUY_DURING_DRAW)) {
 			ChatUtils.errorRaw(player, "Cannot buy tickets during a drawing.");
 			return false;
@@ -214,23 +297,24 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 		int maxTickets = options.getInt(Config.DEFAULT_MAX_TICKETS);
 		int maxPlayers = options.getInt(Config.DEFAULT_MAX_PLAYERS);
 		int playersEntered = getPlayersEntered();
-		if (maxTickets <= 0 && maxPlayers <= 0)
-			return true;
-		if (playersEntered >= maxPlayers) {
-			ChatUtils
-					.errorRaw(player, "Cannot fit anymore people in this lottery");
-			return false;
-		}
 		int num = getTicketsBought(name);
-		if (num >= maxTickets) {
-			ChatUtils.errorRaw(player, "You cannot buy anymore tickets.");
-			return false;
-		} else if (num + tickets > maxTickets) {
-			ChatUtils.errorRaw(player, "You cannot buy this many tickets.");
-			return false;
-		} else {
-			return true;
+		if (maxTickets > 0) {
+			if (num >= maxTickets) {
+				ChatUtils.errorRaw(player, "You cannot buy anymore tickets.");
+				return false;
+			} else if (num + tickets > maxTickets) {
+				ChatUtils.errorRaw(player, "You cannot buy this many tickets.");
+				return false;
+			}
 		}
+		if(maxPlayers > 0) {
+			if (playersEntered >= maxPlayers) {
+				ChatUtils
+						.errorRaw(player, "Cannot fit anymore people in this lottery");
+				return false;
+			}
+		}
+		return true;
 	}
 	
 	public void broadcast(String player, int tickets) {
@@ -241,12 +325,11 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 		ChatUtils.broadcastRaw(message);
 	}
 
-	public boolean buyTickets(Player player, int tickets) {
+	public synchronized boolean buyTickets(Player player, int tickets) {
 		String name = player.getName();
 		if (!canBuy(player, tickets)) {
 			return false;
 		}
-		Economy econ = Plugin.getEconomy();
 		if (!econ.hasAccount(name)) {
 			ChatUtils.errorRaw(player,
 					"You do not have an account with your server's economy.");
@@ -254,24 +337,24 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 		}
 		double ticketCost = options.getDouble(Config.DEFAULT_TICKET_COST);
 		double sub = ticketCost * (double) tickets;
-		if (!econ.has(name, sub)) {
+		if (!econ.hasEnough(name, sub)) {
 			ChatUtils
 					.errorRaw(player,
 							"You do not have enough money to buy this amount of tickets.");
 			return false;
 		}
-		econ.withdrawPlayer(name, sub);
+		econ.withdraw(name, sub);
 		int num = options.getInt("players." + name, 0);
 		options.set("players." + name, num + tickets);
-		double ticketTax = options.getDouble(Config.DEFAULT_TICKET_TAX);
 		ChatUtils.sendRaw(player, ChatColor.YELLOW,
 				"You have bought %s%d ticket(s) %sfor %s%s.", ChatColor.GOLD,
 				tickets, ChatColor.YELLOW, ChatColor.GOLD, lotteryName);
 		if (!isItemOnly()) {
+			double ticketTax = options.getDouble(Config.DEFAULT_TICKET_TAX);
 			double add = ticketCost - (ticketCost * (ticketTax / 100));
 			double d = add * (double) tickets;
 			ChatUtils.sendRaw(player, ChatColor.GOLD,
-					"%s %shas been added to %s%s's %spot.", Utils.format(d),
+					"%s %shas been added to %s%s's %spot.", econ.format(d),
 					ChatColor.YELLOW, ChatColor.GOLD, lotteryName,
 					ChatColor.YELLOW);
 			options.set(Config.DEFAULT_POT,
@@ -283,7 +366,7 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 		return true;
 	}
 
-	public boolean rewardPlayer(CommandSender rewarder, String player,
+	public synchronized boolean rewardPlayer(CommandSender rewarder, String player,
 			int tickets) {
 		int ticketLimit = options.getInt(Config.DEFAULT_TICKET_LIMIT);
 		int num = options.getInt("players." + player, 0);
@@ -314,7 +397,16 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 
 	public boolean isOver() {
 		int ticketLimit = options.getInt(Config.DEFAULT_TICKET_LIMIT);
-		return (ticketLimit > 0) ? getPlayers().size() >= ticketLimit : false;
+		if(ticketLimit <= 0) {
+			return false;
+		}
+		int players = getPlayers().size();
+		if(players < ticketLimit) {
+			return false;
+		}
+		int entered = getPlayersEntered();
+		int minPlayers = options.getInt(Config.DEFAULT_MIN_PLAYERS);
+		return entered >= minPlayers && entered >= 1;
 	}
 
 	public void sendInfo(CommandSender sender) {
@@ -327,7 +419,7 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 					sender,
 					ChatColor.YELLOW,
 					"- Pot: "
-							+ Utils.format(options
+							+ econ.format(options
 									.getDouble(Config.DEFAULT_POT)));
 		}
 		for (Reward reward : rewards) {
@@ -338,20 +430,16 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 				sender,
 				ChatColor.YELLOW,
 				"- Ticket Cost: "
-						+ Utils.format(options
+						+ econ.format(options
 								.getDouble(Config.DEFAULT_TICKET_COST)));
 		ChatUtils.sendRaw(
 				sender,
 				ChatColor.YELLOW,
-				"- Ticket Tax: "
-						+ Utils.format(options
-								.getDouble(Config.DEFAULT_TICKET_TAX)));
+				"- Ticket Tax: " + String.format("%,.2f", options.getDouble(Config.DEFAULT_TICKET_TAX)));
 		ChatUtils.sendRaw(
 				sender,
 				ChatColor.YELLOW,
-				"- Pot Tax: "
-						+ Utils.format(options
-								.getDouble(Config.DEFAULT_POT_TAX)));
+				"- Pot Tax: " + String.format("%,.2f", options.getDouble(Config.DEFAULT_POT_TAX)));
 		ChatUtils.sendRaw(sender, ChatColor.YELLOW, "- Players Entered: "
 				+ getPlayersEntered());
 		ChatUtils.sendRaw(sender, ChatColor.YELLOW, "- Tickets Left: "
@@ -443,7 +531,7 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 		List<String> keys = new ArrayList<String>(options.keySet());
 		for (int cntr = 0; cntr < keys.size(); cntr++) {
 			String key = keys.get(cntr);
-			if (key.startsWith("players")) {
+			if (key.startsWith("players.")) {
 				options.remove(key);
 			}
 		}
@@ -473,14 +561,13 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 			}
 			options.set("winner", winner);
 			ChatUtils.broadcast("%s%s!", ChatColor.GOLD, winner);
-			StringBuilder logWinner = new StringBuilder(lotteryName + ": "
-					+ winner);
 			if (!this.isItemOnly()) {
 				double pot = options.getDouble(Config.DEFAULT_POT);
 				double potTax = options.getDouble(Config.DEFAULT_POT_TAX);
 				double winnings = pot - (pot * (potTax / 100));
-				rewards.add(0, new PotReward(winnings));
+				rewards.add(0, new PotReward(econ, winnings));
 			}
+			StringBuilder logWinner = new StringBuilder(lotteryName + ": " + winner);
 			for (Reward reward : rewards) {
 				logWinner.append(", ");
 				logWinner.append(reward);

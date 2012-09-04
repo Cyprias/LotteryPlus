@@ -1,5 +1,5 @@
 # config properties
-# NOTE: color codes can be used the messages
+# NOTE: color codes can be used in messages
 #
 properties:
 
@@ -37,6 +37,11 @@ properties:
     # <lottery> - the lottery the player bought it from
     #
     buy-message: '&e<player> has bought <tickets> tickets for <lottery>'
+    
+    # message to be printed out when a lottery
+    # reaches its defined 'warning times'
+    # see defaults -> warning-times: for warning time
+    warning-message: '&e[Lottery+] - There are <time> left until the drawing occurs for <name>.'
 
     # whether to broadcast out the buy message or not
     buy-enable: true
@@ -129,6 +134,15 @@ defaults:
 
     # cost of lottery tickets
     ticket-cost: 10.00
+    
+    # whether to use vault
+    use-vault: false
+    
+    # id for material used when 'use-vault' is false
+    material-id: 266
+    
+    # alias for the currency when 'use-vault' is false
+    material-name: Gold Ingot
 
     # ticket tax used
     # ex: 
@@ -147,6 +161,23 @@ defaults:
     # only 900.00 is awarded to the player 
     #
     pot-tax: 0.0
+    
+    # used to alert players about the current time of the lottery
+    # how to:
+    # 
+    # '24h 12h 6h 3h 1h'
+    # this will alert the players at 24, 12, 6, 3, and 1 hours
+    # 
+    # <amount><symbol>
+    # symbols:
+    # w: weeks
+    # d: days
+    # h: hours
+    # m: minutes
+    # s: seconds
+    #
+    #see: properties -> warning-message: for control on what the message is printed
+    warning-times: ''
 
     # amount added to ticket-cost after failed drawing
     reset-add-ticket-cost: 0.00

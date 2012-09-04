@@ -5,14 +5,14 @@ import java.util.List;
 import org.bukkit.command.CommandSender;
 
 import com.randude14.lotteryplus.ChatUtils;
-import com.randude14.lotteryplus.Permission;
+import com.randude14.lotteryplus.Perm;
 import com.randude14.lotteryplus.Plugin;
 
 public class UpdateCommand implements Command {
 	private static final String currentVersion = Plugin.getVersion();
 
 	public boolean execute(CommandSender sender, org.bukkit.command.Command cmd, String[] args) {
-		if(!Plugin.checkPermission(sender, Permission.UPDATE)) {
+		if(!Plugin.checkPermission(sender, Perm.UPDATE)) {
 			return false;
 		}
 		Plugin.updateCheck(sender, currentVersion);
@@ -24,11 +24,11 @@ public class UpdateCommand implements Command {
 	}
 
 	public void getCommands(CommandSender sender, org.bukkit.command.Command cmd) {
-		ChatUtils.sendCommandHelp(sender, Permission.UPDATE, "/%s update - check for updates.", cmd);
+		ChatUtils.sendCommandHelp(sender, Perm.UPDATE, "/%s update - check for updates.", cmd);
 	}
 
 	public void listCommands(CommandSender sender, List<String> list) {
-		if(Plugin.hasPermission(sender, Permission.UPDATE))
+		if(Plugin.hasPermission(sender, Perm.UPDATE))
 			list.add("/%s update - check for updates.");
 	}
 	

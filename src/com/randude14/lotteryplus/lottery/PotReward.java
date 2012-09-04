@@ -3,28 +3,43 @@ package com.randude14.lotteryplus.lottery;
 import java.util.Map;
 import java.util.HashMap;
 
-import net.milkbowl.vault.economy.Economy;
-
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.serialization.SerializableAs;
 import org.bukkit.entity.Player;
 
 import com.randude14.lotteryplus.ChatUtils;
-import com.randude14.lotteryplus.Plugin;
 import com.randude14.lotteryplus.Utils;
+import com.randude14.lotteryplus.register.economy.Economy;
 
 @SerializableAs("PotReward")
 public class PotReward implements Reward {
+	private final int materialID;
 	private final double pot;
 	
+	public PotReward(Economy econ, double pot) {
+		this.materialID = econ.getMaterialID();
+		this.pot = pot;
+	}
+	
 	public PotReward(final double pot) {
+		this.materialID = -1;
+		this.pot = pot;
+	}
+	
+	public PotReward(final int materialID, final double pot) {
+		this.materialID = materialID;
 		this.pot = pot;
 	}
 
 	public void rewardPlayer(Player player) {
-		Economy econ = Plugin.getEconomy();
-		econ.depositPlayer(player.getName(), pot);
-		ChatUtils.send(player, ChatColor.YELLOW, "You have been rewarded %s.", Utils.format(pot));
+		try {
+			Economy econ = Economy.valueOf(materialID);
+			econ.deposit(player.getName(), pot);
+			ChatUtils.send(player, ChatColor.YELLOW, "You have been rewarded %s.", econ.format(pot));
+		} catch (Exception ex) {
+			ChatUtils.error(player, "Error occurred while trying to reward you.");
+			ex.printStackTrace();
+		}
 	}
 	
 	public String getInfo() {
@@ -37,12 +52,14 @@ public class PotReward implements Reward {
 	
 	public static PotReward deserialize(Map<String, Object> map) {
 		double pot = (Double) map.get("pot");
-		return new PotReward(pot);
+		int materialID = (map.containsKey("material-id")) ? (Integer) map.get("material-id") : -1;
+		return new PotReward(materialID, pot);
 	}
 
 	public Map<String, Object> serialize() {
 		Map<String, Object> map = new HashMap<String, Object>();
 		map.put("pot", pot);
+		map.put("material-id", materialID);
 		return map;
 	}
 }
