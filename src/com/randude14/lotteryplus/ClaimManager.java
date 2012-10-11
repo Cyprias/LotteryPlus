@@ -56,7 +56,7 @@ public class ClaimManager {
 	public static void addClaim(String name, String lottery, List<Reward> rewards) {
 		if (!claims.containsKey(name))
 			claims.put(name, new ArrayList<LotteryClaim>());
-		LotteryClaim claim = new LotteryClaim(lottery, rewards);
+		LotteryClaim claim = new LotteryClaim(lottery, new ArrayList<Reward>(rewards));
 		claims.get(name).add(claim);
 		saveClaims();
 	}
