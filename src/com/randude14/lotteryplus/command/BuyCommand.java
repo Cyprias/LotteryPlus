@@ -32,6 +32,12 @@ public class BuyCommand implements Command {
 			ChatUtils.error(sender, "'%s' is not an int.", args[1]);
 			return false;
 		}
+
+		if (tickets <= 0){
+			ChatUtils.error(sender, "Cannot buy negative tickets.");
+			return false;
+		}
+		
 		if(lottery.buyTickets((Player) sender, tickets)) {
 			lottery.broadcast(sender.getName(), tickets);
 			if(lottery.isOver()) {
