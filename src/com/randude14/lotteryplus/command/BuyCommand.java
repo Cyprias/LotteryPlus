@@ -34,7 +34,7 @@ public class BuyCommand implements Command {
 		}
 
 		if (tickets <= 0){
-			ChatUtils.error(sender, "Cannot buy negative tickets.");
+			ChatUtils.error(sender, "Tickets cannot be negative.");
 			return false;
 		}
 		
