@@ -34,6 +34,12 @@ public class RewardCommand implements Command {
 		String name = player.getName();
 		try {
 			int tickets = Integer.parseInt(args[2]);
+			
+			if (tickets <= 0){
+				ChatUtils.error(sender, "Tickets cannot be negative.");
+				return false;
+			}
+			
 			if(lottery.rewardPlayer(sender, name, tickets)) {
 				ChatUtils.send(sender, ChatColor.GOLD, "%s %shas been rewarded %s%d ticket(s) %sfor %s%s", 
 						name, ChatColor.YELLOW, ChatColor.GOLD, tickets, ChatColor.YELLOW, ChatColor.GOLD, lottery.getName());
