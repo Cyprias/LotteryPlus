@@ -494,7 +494,12 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 	public long getTime() {
 		return timer.getTime();
 	}
-
+	
+	public void setTime(long newTime) {
+		timer.setTime(newTime);
+		timer.setResetTime(newTime);
+	}
+	
 	public void draw() {
 		draw(null);
 	}

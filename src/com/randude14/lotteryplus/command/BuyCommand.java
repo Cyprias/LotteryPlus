@@ -9,6 +9,7 @@ import com.randude14.lotteryplus.ChatUtils;
 import com.randude14.lotteryplus.LotteryManager;
 import com.randude14.lotteryplus.Perm;
 import com.randude14.lotteryplus.Plugin;
+import com.randude14.lotteryplus.configuration.Config;
 import com.randude14.lotteryplus.lottery.Lottery;
 
 public class BuyCommand implements Command {
@@ -40,6 +41,13 @@ public class BuyCommand implements Command {
 		
 		if(lottery.buyTickets((Player) sender, tickets)) {
 			lottery.broadcast(sender.getName(), tickets);
+
+			long sniper_extend = Config.getLong(Config.SNIPER_EXTEND);
+			if (sniper_extend >= 0 && lottery.getTime() <= sniper_extend){
+				lottery.setTime(sniper_extend);
+				ChatUtils.broadcast(lottery.getName() + " lottery extended by "+sniper_extend+" seconds.");
+			}
+			
 			if(lottery.isOver()) {
 				lottery.draw();
 			}

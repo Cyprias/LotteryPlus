@@ -83,6 +83,8 @@ properties:
     # ex: 'MAIN1 MAIN2 MAIN3', ect...
     main-lotteries: ''
     
+    # Anti sniper
+    sniper-extend: 60
 
 
 

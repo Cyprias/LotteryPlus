@@ -12,6 +12,7 @@ public class Config {
 	public static final Property<Long> UPDATE_DELAY = new Property<Long>("properties.update-delay", 30L);
 	public static final Property<Long> REMINDER_MESSAGE_TIME = new Property<Long>("properties.reminder-message-delay", 10L);
 	public static final Property<Long> DRAW_DELAY = new Property<Long>("properties.draw-delay", 3L);
+	public static final Property<Long> SNIPER_EXTEND = new Property<Long>("properties.sniper-extend", 60L);
 	public static final Property<String> MAIN_LOTTERIES = new Property<String>("properties.main-lotteries", "");
 	public static final Property<Boolean> SHOULD_DROP = new Property<Boolean>("properties.should-drop", true);
 	public static final Property<Boolean> BUY_ENABLE = new Property<Boolean>("properties.buy-enable", true);
