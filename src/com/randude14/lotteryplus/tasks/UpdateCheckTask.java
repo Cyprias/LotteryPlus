@@ -8,7 +8,9 @@ public class UpdateCheckTask implements Task {
 	private int updateId;
 	
 	public void run() {
-		Plugin.updateCheck(currentVersion);
+		if(Plugin.isThereNewUpdate(currentVersion)) {
+			Plugin.updateCheck(currentVersion);
+		}
 	}
 	
 	public void scheduleTask() {

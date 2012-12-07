@@ -14,25 +14,19 @@ import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
-import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.enchantments.Enchantment;
-import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryHolder;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.w3c.dom.Document;
@@ -44,7 +38,6 @@ import com.randude14.lotteryplus.command.*;
 import com.randude14.lotteryplus.configuration.CustomYaml;
 import com.randude14.lotteryplus.listeners.PlayerListener;
 import com.randude14.lotteryplus.listeners.SignListener;
-import com.randude14.lotteryplus.lottery.ItemReward;
 import com.randude14.lotteryplus.lottery.Lottery;
 import com.randude14.lotteryplus.register.permission.BukkitPermission;
 import com.randude14.lotteryplus.register.permission.Permission;
@@ -54,7 +47,6 @@ import com.randude14.lotteryplus.util.TimeConstants;
 
 public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 	private static Plugin instance = null;
-	private static final Map<InventoryHolder, Inventory> inventories = new HashMap<InventoryHolder, Inventory>();
 	private static final Map<String, String> buyers = new HashMap<String, String>();
 	private static final List<Task> tasks = new ArrayList<Task>();
 	public static final String CMD_LOTTERY = "lottery";
@@ -117,6 +109,7 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 		Logger.info("disabled.");
 		getServer().getScheduler().cancelTasks(this);
 		LotteryManager.saveLotteries();
+		WinnersLogger.close();
 		instance = null;
 		perm = null;
 	}
@@ -288,8 +281,7 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 				}
 
 				if (tickets <= 0) {
-					ChatUtils.errorRaw(player,
-							String.format("Tickets must be positive."));
+					ChatUtils.errorRaw(player, "Tickets must be positive.");
 					ChatUtils.errorRaw(player, "Transaction cancelled");
 					ChatUtils
 							.sendRaw(player, ChatColor.GOLD,
@@ -322,63 +314,30 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 			}
 		}
 	}
-	@EventHandler(priority = EventPriority.MONITOR)
-	public void onInventoryClose(InventoryCloseEvent event) {
-		HumanEntity entity = event.getPlayer();
-		Inventory inventory = inventories.get(entity);
-		if(inventory != null) {
-			dropItems(inventory.getContents(), entity.getLocation());
-		}
-	}
 	
-	public static int scheduleAsyncRepeatingTask(Runnable runnable,
-			long initialDelay, long reatingDelay) {
-		return instance
-				.getServer()
-				.getScheduler()
-				.scheduleAsyncRepeatingTask(instance, runnable, initialDelay,
-						reatingDelay);
-	}
-
-	public static int scheduleAsyncDelayedTask(Runnable runnable, long delay) {
-		return instance.getServer().getScheduler()
-				.scheduleAsyncDelayedTask(instance, runnable, delay);
-	}
-
-	public static int scheduleSyncRepeatingTask(Runnable runnable,
-			long initialDelay, long reatingDelay) {
-		return instance
-				.getServer()
-				.getScheduler()
-				.scheduleSyncRepeatingTask(instance, runnable, initialDelay,
-						reatingDelay);
-	}
-	
-	public static void openInventory(List<ItemReward> rewards, Player player) {
-		int invSize = getSize(rewards.size());
-		Inventory inventory = Bukkit.createInventory(player, invSize, "Item Rewards");
-		for(ItemReward reward : rewards) {
-			inventory.addItem(reward.getItem());
-		}
-		player.openInventory(inventory);
-		inventories.put(player, inventory);
-	}
-	
-	private static void dropItems(ItemStack[] contents, Location loc) {
-		World world = loc.getWorld();
-		for(ItemStack item : contents) {
-			if(item != null && item.getType() == Material.AIR) {
-				world.dropItem(loc, item);
+	public static boolean isThereNewUpdate(String currentVersion) {
+		String latestVersion = currentVersion;
+		try {
+			URL url = new URL("http://dev.bukkit.org/server-mods/lotteryplus/files.rss");
+			Document doc = DocumentBuilderFactory.newInstance()
+					.newDocumentBuilder()
+					.parse(url.openConnection().getInputStream());
+			doc.getDocumentElement().normalize();
+			NodeList nodes = doc.getElementsByTagName("item");
+			Node firstNode = nodes.item(0);
+			if (firstNode.getNodeType() == 1) {
+				Element firstElement = (Element) firstNode;
+				NodeList firstElementTagName = firstElement
+						.getElementsByTagName("title");
+				Element firstNameElement = (Element) firstElementTagName
+						.item(0);
+				NodeList firstNodes = firstNameElement.getChildNodes();
+				latestVersion = firstNodes.item(0).getNodeValue();
 			}
+		} catch (Exception ex) {
+			latestVersion = currentVersion;
 		}
-	}
-	
-	private static int getSize(int size) {
-		int invSize = 9;
-		while(invSize < size) {
-			invSize += 9;
-		}
-		return (invSize > 54) ? 54 : invSize;
+		return !latestVersion.endsWith(currentVersion);
 	}
 	
 	public static void updateCheck(String currentVersion) {
@@ -412,6 +371,29 @@ public class Plugin extends JavaPlugin implements Listener, TimeConstants {
 		} else {
 			ChatUtils.error(sender, "No updates available.");
 		}
+	}
+	
+	public static int scheduleAsyncRepeatingTask(Runnable runnable,
+			long initialDelay, long reatingDelay) {
+		return instance
+				.getServer()
+				.getScheduler()
+				.scheduleAsyncRepeatingTask(instance, runnable, initialDelay,
+						reatingDelay);
+	}
+
+	public static int scheduleAsyncDelayedTask(Runnable runnable, long delay) {
+		return instance.getServer().getScheduler()
+				.scheduleAsyncDelayedTask(instance, runnable, delay);
+	}
+
+	public static int scheduleSyncRepeatingTask(Runnable runnable,
+			long initialDelay, long reatingDelay) {
+		return instance
+				.getServer()
+				.getScheduler()
+				.scheduleSyncRepeatingTask(instance, runnable, initialDelay,
+						reatingDelay);
 	}
 
 	public static int scheduleSyncDelayedTask(Runnable runnable, long delay) {

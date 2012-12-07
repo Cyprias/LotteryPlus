@@ -8,32 +8,25 @@ import org.bukkit.configuration.serialization.SerializableAs;
 import org.bukkit.entity.Player;
 
 import com.randude14.lotteryplus.ChatUtils;
-import com.randude14.lotteryplus.Utils;
 import com.randude14.lotteryplus.register.economy.Economy;
 
 @SerializableAs("PotReward")
 public class PotReward implements Reward {
-	private final int materialID;
+	private final Economy econ;
 	private final double pot;
 	
-	public PotReward(Economy econ, double pot) {
-		this.materialID = econ.getMaterialID();
-		this.pot = pot;
-	}
-	
-	public PotReward(final double pot) {
-		this.materialID = -1;
+	public PotReward(Economy econ, final double pot) {
+		this.econ = econ;
 		this.pot = pot;
 	}
 	
 	public PotReward(final int materialID, final double pot) {
-		this.materialID = materialID;
+		this.econ = Economy.valueOf(materialID);
 		this.pot = pot;
 	}
-
+	
 	public void rewardPlayer(Player player) {
 		try {
-			Economy econ = Economy.valueOf(materialID);
 			econ.deposit(player.getName(), pot);
 			ChatUtils.send(player, ChatColor.YELLOW, "You have been rewarded %s.", econ.format(pot));
 		} catch (Exception ex) {
@@ -43,11 +36,7 @@ public class PotReward implements Reward {
 	}
 	
 	public String getInfo() {
-		return String.format("Pot Reward: %s", Utils.format(pot));
-	}
-	
-	public String toString() {
-		return String.format("[%s]", Utils.format(pot));
+		return econ.format(pot);
 	}
 	
 	public static PotReward deserialize(Map<String, Object> map) {
@@ -59,7 +48,7 @@ public class PotReward implements Reward {
 	public Map<String, Object> serialize() {
 		Map<String, Object> map = new HashMap<String, Object>();
 		map.put("pot", pot);
-		map.put("material-id", materialID);
+		map.put("material-id", econ.getMaterialID());
 		return map;
 	}
 }

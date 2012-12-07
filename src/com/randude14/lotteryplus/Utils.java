@@ -4,17 +4,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.inventory.ItemStack;
 
 import com.randude14.lotteryplus.configuration.Config;
 import com.randude14.lotteryplus.util.TimeConstants;
 
 public class Utils implements TimeConstants {
-	private static final Random rand = new Random();
 	
 	public static long loadSeed(String line) {
 		if(line == null)
-			return rand.nextLong();
+			return new Random().nextLong();
 		try {
 			return Long.parseLong(line);
 		} catch (Exception ex) {	
@@ -26,8 +28,22 @@ public class Utils implements TimeConstants {
 		try {
 			Thread.sleep(delay);
 		} catch (Exception ex) {
-			Logger.info("exceptoin caught in sleep()");
+			Logger.info("exception caught in sleep()");
 		}
+	}
+	
+	public static String parseLocation(Location loc) {
+		return String.format("%s %d %d %d", loc.getWorld().getName(), loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
+	}
+	
+	public static Location parseToLocation(String str) {
+		String[] lines = str.split("\\s");
+		World world = Bukkit.getWorld(lines[0]);
+		if(world == null) return null;
+		int x = Integer.parseInt(lines[1]);
+		int y = Integer.parseInt(lines[2]);
+		int z = Integer.parseInt(lines[3]);
+		return new Location(world, x, y, z);
 	}
 	
 	public static String format(double amount) {
@@ -51,32 +67,36 @@ public class Utils implements TimeConstants {
 			}
 			else {
 				if(sizeIndex < 0)
-					data = Byte.parseByte(line.substring(colenIndex+1));
+					data = Byte.valueOf(line.substring(colenIndex+1));
 				else
-					data = Byte.parseByte(line.substring(colenIndex+1, sizeIndex));
+					data = Byte.valueOf(line.substring(colenIndex+1, sizeIndex));
 			}
 			int itemId = Integer.parseInt(line.substring(0, colenIndex));
 			if(sizeIndex >= 0)
 				stackSize = Integer.parseInt(line.substring(sizeIndex+1));
-			if(data == null)
-				return new ItemStack(itemId, stackSize);
-			else
-				return new ItemStack(itemId, stackSize, data);
+			ItemStack result = new ItemStack(itemId, stackSize, data);
+			return result;
 		} catch (Exception ex) {
 			Logger.warning("Failed to load item stack '%s'.", line);
 		}
 		return null;
 	}
 	
-	public static List<ItemStack> loadItemStacks(List<String> list) {
-		List<ItemStack> items = new ArrayList<ItemStack>();
-		for(String line : list) {
+	public static List<ItemStack> getItemStacks(String line) {
+		List<ItemStack> rewards = new ArrayList<ItemStack>();
+		listItemStacks(rewards, line);
+		return rewards;
+	}
+	
+	public static void listItemStacks(List<ItemStack> rewards, String line) {
+		for(String str : line.split("\\s+")) {
 			try {
-				items.add(loadItemStack(line));
+				ItemStack item = loadItemStack(str);
+				if(item != null)
+					rewards.add(item);
 			} catch (Exception ex) {
-				Logger.info("Failed to load %s." + line);
+				Logger.info("Failed to load %s.", line);
 			}
 		}
-		return items;
 	}
 }

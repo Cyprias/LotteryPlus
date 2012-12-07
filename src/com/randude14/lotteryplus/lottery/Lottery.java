@@ -3,6 +3,7 @@ package com.randude14.lotteryplus.lottery;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -11,6 +12,9 @@ import java.util.Set;
 import org.apache.commons.lang.Validate;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
+import org.bukkit.block.Block;
+import org.bukkit.block.Sign;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -31,7 +35,9 @@ import com.randude14.lotteryplus.util.TimeConstants;
 
 public class Lottery implements FormatOptions, TimeConstants, Runnable {
 	private final LotteryTimer timer;
+	private final Map<String, Long> cooldowns;
 	private final List<Reward> rewards;
+	private final List<Sign> signs;
 	private final String lotteryName;
 	private final Random rand;
 	private LotteryOptions options;
@@ -40,7 +46,9 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 	private int drawId;
 
 	public Lottery(String name) {
+		this.cooldowns = new HashMap<String, Long>();
 		this.rewards = new ArrayList<Reward>();
+		this.signs = new ArrayList<Sign>();
 		this.lotteryName = name;
 		this.timer = new LotteryTimer(this);
 		this.rand = new Random();
@@ -84,6 +92,8 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 			return;
 		}
 		printWarningTimes();
+		updateSigns();
+		updateCooldowns();
 	}
 	
 	private void printWarningTimes() {
@@ -127,6 +137,47 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 				} catch (Exception ex) {
 					ex.printStackTrace();
 				}
+			}
+		}
+	}
+	
+	private void updateSigns() {
+		updateSigns(false);
+	}
+	
+	private void updateSigns(boolean over) {
+		String line1 = ChatUtils.replaceColorCodes(Config.getString(Config.SIGN_TAG));
+		String line2, line3, line4;
+		if(over) {
+			line2 = ChatUtils.replaceColorCodes(format(Config.getString(Config.OVER_SIGN_LINE_TWO)));
+			line3 = ChatUtils.replaceColorCodes(format(Config.getString(Config.OVER_SIGN_LINE_THREE)));
+			line4 = ChatUtils.replaceColorCodes(format(Config.getString(Config.OVER_SIGN_LINE_FOUR)));
+		} else {
+			if(isDrawing()) {
+				line2 = ChatUtils.replaceColorCodes(format(Config.getString(Config.DRAWING_SIGN_LINE_TWO)));
+				line3 = ChatUtils.replaceColorCodes(format(Config.getString(Config.DRAWING_SIGN_LINE_THREE)));
+				line4 = ChatUtils.replaceColorCodes(format(Config.getString(Config.DRAWING_SIGN_LINE_FOUR)));
+			} else {
+				line2 = ChatUtils.replaceColorCodes(format(Config.getString(Config.UPDATE_SIGN_LINE_TWO)));
+				line3 = ChatUtils.replaceColorCodes(format(Config.getString(Config.UPDATE_SIGN_LINE_THREE)));
+				line4 = ChatUtils.replaceColorCodes(format(Config.getString(Config.UPDATE_SIGN_LINE_FOUR)));
+			}
+		}
+		for(Sign sign : signs) {
+			sign.setLine(0, line1);
+			sign.setLine(1, line2);
+			sign.setLine(2, line3);
+			sign.setLine(3, line4);
+			sign.update(true);
+		}
+	}
+	
+	private void updateCooldowns() {
+		Iterator<String> it = cooldowns.keySet().iterator();
+		while(it.hasNext()) {
+			long cooldown = cooldowns.get(it.next());
+			if(cooldown-- <= 0) {
+				it.remove();
 			}
 		}
 	}
@@ -211,6 +262,24 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 				rewards.clear();
 			} else {
 				transfer(this.options, options);
+				signs.clear();
+				int cntr = 1;
+				while(options.contains("sign" + cntr)) {
+					String str = options.getString("sign" + cntr);
+					Location loc = Utils.parseToLocation(str);
+					if(loc != null) {
+						Block block = loc.getBlock();
+						if(Plugin.isSign(block)) {
+							Sign sign = (Sign) block.getState();
+							signs.add(sign);
+						} else {
+							Logger.info("'%s' is no longer a sign." + str);
+						}
+					} else {
+						Logger.info("'%s' is a corrup location." + str);
+					}
+					cntr++;
+				}
 			}
 
 			this.options = options;
@@ -237,11 +306,8 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 			// LOAD ITEM REWARDS
 			String read = options.getString(Config.DEFAULT_ITEM_REWARDS);
 			if (!(read == null || read.equals(""))) {
-				for (String line : read.split("\\s+")) {
-					ItemStack item = Utils.loadItemStack(line);
-					if (item != null) {
-						rewards.add(new ItemReward(item));
-					}
+				for(ItemStack item : Utils.getItemStacks(read)) {
+					rewards.add(new ItemReward(item));
 				}
 			}
 
@@ -275,15 +341,65 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 		if (oldOptions.getBoolean(Config.DEFAULT_CLEAR_REWARDS)) {
 			rewards.clear();
 		}
+		if(oldOptions.getBoolean(Config.DEFAULT_KEEP_TICKETS)) {
+			for(String player : getPlayers()) {
+				newOptions.set("players." + player, oldOptions.getInt("players." + player, 0));
+			}
+		}
 	}
 
 	public void save() {
 		options.set("save-time", timer.getTime());
 		options.set("reset-time", timer.getResetTime());
 		options.remove("drawing");
+		int cntr = 1;
+		for(Sign sign : signs) {
+			options.set("sign" + cntr++, Utils.parseLocation(sign.getLocation()));
+		}
 	}
-
-	public synchronized boolean canBuy(Player player, int tickets) {
+	
+	public void registerSign(Sign sign) {
+		signs.add(sign);
+	}
+	
+	public boolean hasRegisteredSign(Block block) {
+		for(Sign s : signs) {
+			if(Plugin.locsInBounds(block.getLocation(), s.getLocation())) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	public boolean hasRegisteredSign(Sign sign) {
+		for(Sign s : signs) {
+			if(Plugin.locsInBounds(sign.getLocation(), s.getLocation())) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	public boolean unregisterSign(Sign sign) {
+		for(int cntr = 0;cntr < signs.size();cntr++) {
+			Sign s = signs.get(cntr);
+			if(Plugin.locsInBounds(sign.getLocation(), s.getLocation())) {
+				signs.remove(cntr);
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	public void broadcast(String player, int tickets) {
+		String message = Config.getString(Config.BUY_MESSAGE);
+		message = message.replace("<player>", player)
+				.replace("<tickets>", "" + tickets)
+				.replace("<lottery>", lotteryName);
+		ChatUtils.broadcast(message);
+	}
+	
+	private boolean canBuy(Player player, int tickets) {
 		if (isDrawing() && !Config.getBoolean(Config.BUY_DURING_DRAW)) {
 			ChatUtils.errorRaw(player, "Cannot buy tickets during a drawing.");
 			return false;
@@ -314,15 +430,11 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 				return false;
 			}
 		}
+		if(cooldowns.containsKey(name)) {
+			ChatUtils.error(player, "You must wait %d seconds before purchasing another ticket.", cooldowns.get(name));
+			return false;
+		}
 		return true;
-	}
-	
-	public void broadcast(String player, int tickets) {
-		String message = Config.getString(Config.BUY_MESSAGE);
-		message = message.replace("<player>", player)
-				.replace("<tickets>", "" + tickets)
-				.replace("<lottery>", lotteryName);
-		ChatUtils.broadcastRaw(message);
 	}
 
 	public synchronized boolean buyTickets(Player player, int tickets) {
@@ -335,24 +447,29 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 					"You do not have an account with your server's economy.");
 			return false;
 		}
+		String taxAccount = options.getString(Config.DEFAULT_TAX_ACCOUNT);
 		double ticketCost = options.getDouble(Config.DEFAULT_TICKET_COST);
-		double sub = ticketCost * (double) tickets;
-		if (!econ.hasEnough(name, sub)) {
+		double total = ticketCost * (double) tickets;
+		double ticketTax = options.getDouble(Config.DEFAULT_TICKET_TAX);
+		double add = ticketCost - (ticketCost * (ticketTax / 100));
+		double d = add * (double) tickets;
+		double taxes = total - d;
+		if (!econ.hasEnough(name, total)) {
 			ChatUtils
 					.errorRaw(player,
 							"You do not have enough money to buy this amount of tickets.");
 			return false;
 		}
-		econ.withdraw(name, sub);
+		econ.withdraw(name, total);
+		if(taxAccount != null && econ.hasAccount(taxAccount)) {
+			econ.deposit(taxAccount, taxes);
+		}
 		int num = options.getInt("players." + name, 0);
 		options.set("players." + name, num + tickets);
 		ChatUtils.sendRaw(player, ChatColor.YELLOW,
 				"You have bought %s%d ticket(s) %sfor %s%s.", ChatColor.GOLD,
 				tickets, ChatColor.YELLOW, ChatColor.GOLD, lotteryName);
 		if (!isItemOnly()) {
-			double ticketTax = options.getDouble(Config.DEFAULT_TICKET_TAX);
-			double add = ticketCost - (ticketCost * (ticketTax / 100));
-			double d = add * (double) tickets;
 			ChatUtils.sendRaw(player, ChatColor.GOLD,
 					"%s %shas been added to %s%s's %spot.", econ.format(d),
 					ChatColor.YELLOW, ChatColor.GOLD, lotteryName,
@@ -404,8 +521,9 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 		if(players < ticketLimit) {
 			return false;
 		}
-		int entered = getPlayersEntered();
 		int minPlayers = options.getInt(Config.DEFAULT_MIN_PLAYERS);
+		if(minPlayers <= 0) return false;
+		int entered = getPlayersEntered();
 		return entered >= minPlayers && entered >= 1;
 	}
 
@@ -526,6 +644,7 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 		drawId = Plugin.scheduleAsyncDelayedTask(this, delay * SERVER_SECOND);
 		timer.setRunning(false);
 		options.set("drawing", true);
+		new SignUpdateTask(this);
 	}
 
 	public synchronized void cancelDrawing() {
@@ -575,7 +694,7 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 			StringBuilder logWinner = new StringBuilder(lotteryName + ": " + winner);
 			for (Reward reward : rewards) {
 				logWinner.append(", ");
-				logWinner.append(reward);
+				logWinner.append("[" + reward.getInfo() + "]");
 			}
 			clearPlayers();
 			WinnersManager.logWinner(logWinner.toString());
@@ -593,6 +712,7 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 				LotteryManager.reloadLottery(lotteryName);
 			} else {
 				LotteryManager.unloadLottery(lotteryName);
+				new SignUpdateTask(this, true);
 			}
 		} catch (Exception ex) {
 			Logger.warning("Error occurred while drawing %s.", lotteryName);
@@ -622,16 +742,6 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 	}
 
 	public static void handleRewards(List<Reward> rewards, Player player) {
-		// TERMINATED UNTIL BUKKIT FIXES CUSTOM INVENTORY ISSUES
-		/*
-		 * if(Config.getProperty(Config.OPEN_INVENTORY)) { List<ItemReward>
-		 * itemRewards = new ArrayList<ItemReward>(); Iterator<Reward> iterator
-		 * = rewards.iterator(); while (iterator.hasNext()) { Reward reward =
-		 * iterator.next(); if(reward instanceof ItemReward) {
-		 * itemRewards.add((ItemReward) reward); iterator.remove(); } }
-		 * if(!itemRewards.isEmpty()) { Logger.info("working");
-		 * Plugin.openInventory(itemRewards, player); } }
-		 */
 		for (Reward reward : rewards) {
 			reward.rewardPlayer(player);
 		}
@@ -673,10 +783,10 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 				options.getDouble(Config.DEFAULT_POT_TAX)
 						+ options.getDouble(Config.DEFAULT_RESET_ADD_POT_TAX));
 		String read = options.getString(Config.DEFAULT_RESET_ADD_ITEM_REWARDS);
-		for (String line : read.split("\\s+")) {
-			ItemStack item = Utils.loadItemStack(line);
-			if (item != null)
+		if(read != null && !read.isEmpty()) {
+			for(ItemStack item : Utils.getItemStacks(read)) {
 				rewards.add(new ItemReward(item));
+			}
 		}
 		this.timer.reset();
 	}
@@ -687,5 +797,24 @@ public class Lottery implements FormatOptions, TimeConstants, Runnable {
 
 	public String toString() {
 		return lotteryName;
+	}
+	
+	private static class SignUpdateTask implements Runnable {
+		private final Lottery lottery;
+		private final boolean over;
+		
+		public SignUpdateTask(final Lottery lottery) {
+			this(lottery, false);
+		}
+		
+		public SignUpdateTask(final Lottery lottery, final boolean over) {
+			this.lottery = lottery;
+			this.over = over;
+			Plugin.scheduleAsyncDelayedTask(this, 0);
+		}
+		
+		public void run() {
+			lottery.updateSigns(over);
+		}
 	}
 }

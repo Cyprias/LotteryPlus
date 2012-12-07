@@ -1,9 +1,9 @@
 package com.randude14.lotteryplus;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -18,7 +18,7 @@ import com.randude14.lotteryplus.lottery.LotteryOptions;
 
 public class LotteryManager {
 	private static final CustomYaml lotteriesConfig = new CustomYaml("lotteries.yml");
-	private static final Map<String, Lottery> lotteries = new HashMap<String, Lottery>();
+	private static final Map<String, Lottery> lotteries = new TreeMap<String, Lottery>(String.CASE_INSENSITIVE_ORDER);
 
 	public static boolean createLotterySection(CommandSender sender,
 			String lotteryName) {
@@ -89,7 +89,7 @@ public class LotteryManager {
 		if (!lotteries.containsKey(find.toLowerCase())) {
 			ChatUtils.error(sender, "%s does not exist.", find);
 		}
-		lotteries.remove(find.toLowerCase());
+		Lottery lottery = lotteries.remove(find.toLowerCase());
 		if(flag) {
 			ConfigurationSection section = getOrCreateLotteriesSection();
 			ConfigurationSection savesSection = lotteriesConfig.getConfig()
@@ -98,8 +98,19 @@ public class LotteryManager {
 			if (savesSection != null) {
 				deleteSection(savesSection, find);
 			}
+			ChatUtils.send(sender, ChatColor.YELLOW, "%s has been unloaded and removed.", lottery.getName());
+			return true;
 		}
+		ChatUtils.send(sender, ChatColor.YELLOW, "%s has been unloaded.", lottery.getName());
 		return false;
+	}
+	
+	private static void deleteSection(ConfigurationSection section, String find) {
+		for (String key : section.getKeys(false)) {
+			if (key.equalsIgnoreCase(find)) {
+				section.set(key, null);
+			}
+		}
 	}
 
 	public static List<Lottery> getLotteries() {
@@ -233,14 +244,6 @@ public class LotteryManager {
 		FileConfiguration config = lotteriesConfig.getConfig();
 		ConfigurationSection lotteriesSection = config.getConfigurationSection("lotteries");
 		return (lotteriesSection != null) ? lotteriesSection : config.createSection("lotteries");
-	}
-
-	private static void deleteSection(ConfigurationSection section, String find) {
-		for (String key : section.getKeys(false)) {
-			if (key.equalsIgnoreCase(find)) {
-				section.set(key, null);
-			}
-		}
 	}
 
 	static class TimerTask implements Runnable {

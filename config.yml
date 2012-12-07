@@ -54,6 +54,10 @@ properties:
     
     # the delay that takes place between a lottery drawing and when it announces the winner, x seconds
     draw-delay: 3
+    
+    # the delay that people have to wait after buying a ticket from a lottery
+    # NOTE: this is the delay between a lottery NOT all lotteries
+    buy-delay: 30
 
     # delay between reminder messages, x minutes: set to 0 or less to disable
     reminder-message-delay: 10
@@ -86,6 +90,32 @@ properties:
     # Anti sniper
     sniper-extend: 60
 
+# various sign formats used in different states of a lottery
+#
+# <name> - name of the lottery
+# <ticketcost> - cost of a ticket for the lottery
+# <reward> - reward of the lottery
+# <time> - time until drawing
+# <winner> - most recent winner of the lottery
+# <ticket_tax> - ticket tax of the lottery
+# <pot_tax> - pot tax of the lottery
+sign-formats:
+
+    # this format is used when the lottery is running and is doing a time update
+    Update:
+        line-2: '<name>'
+        line-3: '<time>'
+        line-4: '<reward>'
+    # this format is used when the lottery is running and is doing a time update
+    Drawing:
+        line-2: '<name>'
+        line-3: 'Drawing...'
+        line-4: '<reward> '   
+    # this format is used when "repeat" has been set to false a winner has been drawn
+    Over:
+        line-2: '<name>'
+        line-3: 'Over'
+        line-4: '<winner>'
 
 
 # lottery defaults, these can be defined in any lottery,
@@ -109,6 +139,9 @@ defaults:
 
     # seed used for the random generator
     seed: 'LotteryPlus'
+    
+    # this account will receive all taxes from 'pot-tax' and "ticket-tax"
+    tax-account: ''
 
     # item rewards that are added to the lottery
     # defined examples: '35:3*64' - stack of light blue wool

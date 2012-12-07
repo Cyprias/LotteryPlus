@@ -10,7 +10,7 @@ public interface Reward extends ConfigurationSerializable {
 	//was successfully rewarded
 	void rewardPlayer(Player player);
 	
-	//toString
+	//return info about the reward
 	String getInfo();
 
 }

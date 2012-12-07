@@ -5,6 +5,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.logging.FileHandler;
 import java.util.logging.Formatter;
+import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
@@ -20,7 +21,7 @@ public class WinnersLogger extends java.util.logging.Logger {
 				winnersLogFile.createNewFile();
 			FileHandler handler = new FileHandler(winnersLogString);
 			handler.setFormatter(new WinnerFormatter());
-			handler.setLevel(Level.FINE);
+			handler.setLevel(Level.INFO);
 			addHandler(handler);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -34,12 +35,23 @@ public class WinnersLogger extends java.util.logging.Logger {
 			sb.append(dateFormatter.format(new Date()));
 			sb.append(" - ");
 			sb.append(record.getMessage());
+			sb.append("\n");
 			return sb.toString();
 		}
 	}
 	
 	private static final WinnersLogger logger = new WinnersLogger();
 	public static void log(String record) {
-		logger.fine(record);
+		logger.info(record);
+	}
+	
+	public static void close() {
+		for(Handler handler : logger.getHandlers()) {
+			try {
+				handler.close();
+			} catch (Exception ex) {
+				ex.printStackTrace();
+			}
+		}
 	}
 }

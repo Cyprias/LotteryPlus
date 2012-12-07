@@ -15,7 +15,7 @@ public class LotteryClaim implements ConfigurationSerializable, Iterable<Reward>
 	private String lotteryName;
 
 	public LotteryClaim(String lottery, List<Reward> rewards) {
-		this.rewards = rewards;
+		this.rewards = new ArrayList<Reward>(rewards);
 		this.lotteryName = lottery;
 	}
 
